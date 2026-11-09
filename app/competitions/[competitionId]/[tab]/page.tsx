@@ -7,6 +7,7 @@ import {
   isEntityTab,
   legacyTab,
 } from "@/components/oval/entity-navigation";
+import { EntityFixtureCard } from "@/components/oval/entity-fixture-card";
 import { LegacyTabContent } from "@/components/oval/entity-tabs";
 import { competitionHeader } from "@/server/entities";
 
@@ -24,5 +25,6 @@ export default async function CompetitionTabPage({ params }: { params: Params })
   const replacement = legacyTab("competition", tab);
   if (replacement !== undefined) redirect(entityHref("competition", competitionId, replacement));
   if (!isEntityTab("competition", tab)) notFound();
+  if (tab === "fixtures") return <EntityFixtureCard kind="competition" id={competitionId} />;
   return <LegacyTabContent tab={tab} />;
 }

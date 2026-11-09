@@ -23,6 +23,15 @@ export function useShell(): ShellData {
   return value;
 }
 
+/** Where a club name links: the team's Overview, or Next opponent for the next opponent. */
+export function useClubHref(): (clubSlug: string) => string {
+  const shell = useContext(ShellContext);
+  return (clubSlug: string) =>
+    shell?.nextOpponentSlug === clubSlug && shell.nextOpponent
+      ? shell.nextOpponent.href
+      : `/teams/${clubSlug}`;
+}
+
 export function AppShell({ data, children }: { data: ShellData; children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);

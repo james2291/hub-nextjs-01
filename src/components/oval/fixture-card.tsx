@@ -1,208 +1,398 @@
 "use client";
 
-import { Link } from "@/lib/link";
+// Fixture Card (HANDOFF.md section 4), built once and used on Competition, Team, Player and
+// Referee pages. Rows are feed fixtures, newest first. Asset availability isn't in the feeds yet,
+// so every asset can be ticked; Download hands the selection to the exports API once it exists.
 import { ArrowRight, Download, RotateCcw, Search } from "lucide-react";
+import NextLink from "next/link";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
-import { Panel } from "@/components/oval/app-shell";
+import { useClubHref } from "@/components/oval/app-shell";
 import { Button } from "@/components/ui/button";
-import type { Competition, Player, Referee, Team } from "@/data/hub";
+import { recordFor, resultFor, ukDate, ukTime, type Fixture, type ResultLetter } from "@/lib/rugby";
 import { cn } from "@/lib/utils";
 
-const views = ["Default", "Videos", "Reports", "Files"] as const;
-type ViewKey = (typeof views)[number];
-
-const viewColumns: Record<ViewKey, string[]> = {
+const PRESETS = {
   Default: ["TX", "Report CSV", "Team XML", "Events XML"],
   Videos: ["TX", "Tight", "Wide"],
   Reports: ["Report CSV", "Report PDF"],
   Files: ["Team XML", "Events XML", "Events CSV", "Events JSON"],
+} as const;
+type Preset = keyof typeof PRESETS;
+
+export type FixtureCardProps = {
+  title: string;
+  description: string;
+  fixtures: Fixture[];
+  /** Team and Player pages: results and names are coloured from this club's side. */
+  perspective?: string;
+  /** Which filters to show. Competition pages filter by round, the others by competition. */
+  filters: { competition?: boolean; result?: boolean; round?: boolean };
+  /** Extra source note, e.g. "Premiership Rugby Cup isn't in these feeds." */
+  sourceNote?: string;
 };
 
-export type FixtureCardRow = {
-  id: string;
-  matchId: string | null;
-  competitionId: string | null;
-  competition: string;
-  home: string;
-  away: string;
-  score: string | null;
-  round: string;
-  date: string;
-  venue: string;
-  status: string;
-};
+const ALL = "all";
 
-function splitFixture(fixture: string) {
-  const parts = fixture.split(/\s+v\s+/i);
-  return { home: parts[0]?.trim() ?? fixture, away: parts[1]?.trim() ?? "" };
-}
-
-export function competitionFixtureRows(competition: Competition): FixtureCardRow[] {
-  return competition.fixtures.map((fixture, index) => {
-    const { home, away } = splitFixture(fixture.fixture);
-    const completed = !/upcoming|tbc/i.test(fixture.result);
-    return {
-      id: `${competition.id}-${index}`,
-      matchId: `${competition.id}-${index}`,
-      competitionId: competition.id,
-      competition: competition.name,
-      home,
-      away,
-      score: completed ? fixture.result : null,
-      round: fixture.round,
-      date: fixture.date,
-      venue: fixture.venue,
-      status: completed ? "Finalised" : "Scheduled",
-    };
-  });
-}
-
-function includesTeam(fixture: string, teamName: string) {
-  const { home, away } = splitFixture(fixture);
-  return home === teamName || away === teamName;
-}
-
-function findFixture(competitions: Competition[], teamName: string, opponent: string, date: string) {
-  return competitions.flatMap((competition) => competition.fixtures.map((fixture, index) => ({ competition, fixture, index }))).find(({ fixture }) => fixture.date === date && includesTeam(fixture.fixture, teamName) && includesTeam(fixture.fixture, opponent));
-}
-
-export function teamFixtureRows(team: Team, competitions: Competition[], season: string): FixtureCardRow[] {
-  const seasonCompetitions = competitions.filter((competition) => competition.season === season);
-  const connected = seasonCompetitions.flatMap((competition) => competitionFixtureRows(competition).filter((row) => row.home === team.name || row.away === team.name));
-  const connectedKeys = new Set(connected.map((row) => `${row.date}:${row.home}:${row.away}`));
-  const recent = team.recentMatches.flatMap((match, index) => {
-    const found = findFixture(seasonCompetitions, team.name, match.opponent, match.date);
-    if (found) return [];
-    const key = `${match.date}:${team.name}:${match.opponent}`;
-    if (connectedKeys.has(key)) return [];
-    return [{ id: `team-${team.id}-${index}`, matchId: null, competitionId: null, competition: "Competition not supplied", home: team.name, away: match.opponent, score: match.score, round: "Round not supplied", date: match.date, venue: "Venue not supplied", status: "Finalised" }];
-  });
-  return [...connected, ...recent];
-}
-
-export function playerFixtureRows(player: Player, team: Team | undefined, competitions: Competition[], season: string): FixtureCardRow[] {
-  const seasonCompetitions = competitions.filter((competition) => competition.season === season);
-  return player.matchLog.map((entry, index) => {
-    const teamName = team?.name ?? "Team not supplied";
-    const found = findFixture(seasonCompetitions, teamName, entry.opponent, entry.date);
-    if (found) return competitionFixtureRows(found.competition)[found.index] ?? fallbackPlayerRow(player, teamName, entry, index);
-    return fallbackPlayerRow(player, teamName, entry, index);
-  });
-}
-
-function fallbackPlayerRow(player: Player, teamName: string, entry: Player["matchLog"][number], index: number): FixtureCardRow {
-  return { id: `player-${player.id}-${index}`, matchId: null, competitionId: null, competition: "Competition not supplied", home: teamName, away: entry.opponent, score: null, round: "Appearance", date: entry.date, venue: "Venue not supplied", status: "Finalised" };
-}
-
-export function refereeFixtureRows(referee: Referee, competitions: Competition[], season: string): FixtureCardRow[] {
-  const seasonCompetitions = competitions.filter((competition) => competition.season === season);
-  return referee.appointments.map((appointment, index) => {
-    const found = seasonCompetitions.flatMap((competition) => competition.fixtures.map((fixture, fixtureIndex) => ({ competition, fixture, fixtureIndex }))).find(({ fixture }) => fixture.fixture === appointment.fixture && fixture.date === appointment.date);
-    if (found) return competitionFixtureRows(found.competition)[found.fixtureIndex] ?? fallbackRefereeRow(referee, appointment, index);
-    return fallbackRefereeRow(referee, appointment, index);
-  });
-}
-
-function fallbackRefereeRow(referee: Referee, appointment: Referee["appointments"][number], index: number): FixtureCardRow {
-  const { home, away } = splitFixture(appointment.fixture);
-  return { id: `referee-${referee.id}-${index}`, matchId: null, competitionId: null, competition: appointment.competition, home, away, score: null, round: "Appointment", date: appointment.date, venue: "Venue not supplied", status: "Finalised" };
-}
-
-export function CompetitionFixtureCard({ competition }: { competition: Competition }) {
-  const rows = useMemo(() => competitionFixtureRows(competition), [competition]);
-  return <FixtureCard rows={rows} />;
-}
-
-export function FixtureCard({ rows }: { rows: FixtureCardRow[] }) {
-  const [view, setView] = useState<ViewKey>("Default");
-  const [status, setStatus] = useState("All results");
+export function FixtureCard({
+  title,
+  description,
+  fixtures,
+  perspective,
+  filters,
+  sourceNote,
+}: FixtureCardProps) {
+  const clubHref = useClubHref();
+  const [competition, setCompetition] = useState(ALL);
+  const [round, setRound] = useState(ALL);
+  const [result, setResult] = useState<ResultLetter | typeof ALL>(ALL);
+  const [preset, setPreset] = useState<Preset>("Default");
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const columns = viewColumns[view];
-  const filtered = rows.filter((row) => {
-    const matchesStatus = status === "All results" || row.status === status;
-    const text = `${row.home} ${row.away} ${row.round} ${row.venue}`.toLowerCase();
-    return matchesStatus && (!query.trim() || text.includes(query.trim().toLowerCase()));
-  });
-  const selectedCount = Object.values(selected).filter(Boolean).length;
+  const competitions = useMemo(
+    () => [...new Map(fixtures.map((f) => [f.competition.slug, f.competition])).values()],
+    [fixtures],
+  );
+  const rounds = useMemo(() => {
+    const seen: string[] = [];
+    for (const fixture of [...fixtures].reverse())
+      if (!seen.includes(fixture.round)) seen.push(fixture.round);
+    return seen;
+  }, [fixtures]);
 
-  const toggle = (key: string) => setSelected((current) => ({ ...current, [key]: !current[key] }));
-  const toggleColumn = (column: string) => {
-    const keys = filtered.map((row) => `${row.id}:${column}`);
-    const allOn = keys.every((key) => selected[key]);
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return fixtures.filter((fixture) => {
+      if (competition !== ALL && fixture.competition.slug !== competition) return false;
+      if (round !== ALL && fixture.round !== round) return false;
+      if (result !== ALL && perspective && resultFor(fixture, perspective) !== result) return false;
+      if (!q) return true;
+      return [
+        fixture.home.club.name,
+        fixture.away.club.name,
+        fixture.venue,
+        fixture.referee?.name ?? "",
+      ].some((text) => text.toLowerCase().includes(q));
+    });
+  }, [fixtures, competition, round, result, perspective, query]);
+
+  const columns = PRESETS[preset];
+  const key = (fixtureId: number, asset: string) => `${fixtureId}:${asset}`;
+  const toggle = (id: string) =>
     setSelected((current) => {
-      const next = { ...current };
-      keys.forEach((key) => { next[key] = !allOn; });
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
+  const toggleColumn = (asset: string) =>
+    setSelected((current) => {
+      const ids = rows.map((fixture) => key(fixture.id, asset));
+      const allOn = ids.every((id) => current.has(id));
+      const next = new Set(current);
+      for (const id of ids) {
+        if (allOn) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  const clear = () => {
+    setCompetition(ALL);
+    setRound(ALL);
+    setResult(ALL);
+    setPreset("Default");
+    setQuery("");
+    setSelected(new Set());
   };
 
-  return <div className="space-y-4">
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex flex-wrap items-center gap-2">
-        <select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-xs outline-none focus:ring-1 focus:ring-ring">
-          <option>All results</option><option>Finalised</option><option>Scheduled</option>
-        </select>
-        <select aria-label="Select asset view" value={view} onChange={(event) => setView(event.target.value as ViewKey)} className="h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-ring">
-          {views.map((item) => <option key={item}>{item}</option>)}
-        </select>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input aria-label="Search fixtures" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search team, round or venue" className="h-9 w-64 rounded-md border border-input bg-background pl-8 pr-3 text-xs outline-none focus:ring-1 focus:ring-ring" />
+  const grid = `104px minmax(0,1.3fr) 76px minmax(0,1.3fr) 100px minmax(0,1.15fr) minmax(0,0.95fr) ${columns.map(() => "64px").join(" ")} 84px`;
+  const summary = perspective
+    ? summaryFor(rows, perspective)
+    : `${rows.length} ${rows.length === 1 ? "match" : "matches"}`;
+
+  return (
+    <>
+      <div>
+        <h2 className="text-[19px] font-semibold leading-none">{title}</h2>
+        <p className="mt-1 text-[13px] text-mute">{description}</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2.5">
+        {filters.competition && competitions.length > 1 && (
+          <SelectBox
+            label="Competition"
+            value={competition}
+            onChange={setCompetition}
+            options={[
+              [ALL, "All competitions"],
+              ...competitions.map((c): [string, string] => [c.slug, c.name]),
+            ]}
+          />
+        )}
+        {filters.round && (
+          <SelectBox
+            label="Round"
+            value={round}
+            onChange={setRound}
+            options={[[ALL, "All rounds"], ...rounds.map((r): [string, string] => [r, r])]}
+          />
+        )}
+        {filters.result && perspective && (
+          <SelectBox
+            label="Result"
+            value={result}
+            onChange={(value) => setResult(value as ResultLetter | typeof ALL)}
+            options={[
+              [ALL, "All results"],
+              ["W", "Won"],
+              ["D", "Drawn"],
+              ["L", "Lost"],
+            ]}
+          />
+        )}
+        <label className="flex h-[30px] items-center gap-2 rounded-[3px] border-[1.5px] border-club bg-panel px-2.5">
+          <span className="text-xs text-mute">Assets</span>
+          <select
+            aria-label="Asset type"
+            value={preset}
+            onChange={(event) => setPreset(event.target.value as Preset)}
+            className="min-h-0 bg-transparent font-medium text-ink outline-none"
+          >
+            {Object.keys(PRESETS).map((name) => (
+              <option key={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex h-[30px] w-[260px] items-center gap-2 rounded-[3px] border border-line bg-panel px-3 text-mute">
+          <Search className="size-3.5 shrink-0" />
+          <input
+            type="search"
+            aria-label="Search fixtures"
+            placeholder="Search team, venue or referee"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="min-h-0 min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-faint"
+          />
+        </label>
+        <span className="ml-auto" />
+        <Button variant="outline" onClick={clear} className="px-3.5">
+          <RotateCcw className="size-3.5" />
+          Clear
+        </Button>
+        <Button
+          aria-disabled={selected.size === 0}
+          disabled={selected.size === 0}
+          onClick={() =>
+            toast(
+              `${selected.size} ${selected.size === 1 ? "file" : "files"} selected for download. Exports aren't connected yet.`,
+            )
+          }
+          className="px-3.5 disabled:bg-[#B8B8B2] disabled:opacity-100"
+        >
+          <Download className="size-3.5" />
+          {selected.size ? `Download ${selected.size}` : "Download"}
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto rounded border border-line bg-panel">
+        <div className="min-w-[1100px]">
+          <div
+            role="row"
+            className="grid items-center gap-2.5 border-b border-line bg-[#F9FAFB] px-4 py-2.5 text-[11px] font-medium text-mute"
+            style={{ gridTemplateColumns: grid }}
+          >
+            <span>Date · KO (UK)</span>
+            <span className="text-right">Home</span>
+            <span className="text-center">Result</span>
+            <span>Away</span>
+            <span>Round</span>
+            <span>Venue</span>
+            <span>Referee</span>
+            {columns.map((asset) => (
+              <button
+                key={asset}
+                type="button"
+                title="Select the whole column"
+                onClick={() => toggleColumn(asset)}
+                className="min-h-0 text-center uppercase hover:text-ink"
+              >
+                {asset}
+              </button>
+            ))}
+            <span className="text-center">Match Centre</span>
+          </div>
+          <div className="max-h-[560px] overflow-y-auto">
+            {rows.length === 0 && (
+              <div className="px-4 py-8 text-center text-mute">No matches for these filters.</div>
+            )}
+            {rows.map((fixture, index) => {
+              const outcome = perspective ? resultFor(fixture, perspective) : null;
+              const homeIsClub = perspective === fixture.home.club.slug;
+              const awayIsClub = perspective === fixture.away.club.slug;
+              const label = `${fixture.home.club.name} v ${fixture.away.club.name}`;
+              return (
+                <div
+                  key={fixture.id}
+                  role="row"
+                  className={cn(
+                    "grid items-center gap-2.5 border-t border-line2 px-4 py-2 first:border-t-0",
+                    index === 0 && "shadow-[inset_2px_0_0_var(--club)]",
+                  )}
+                  style={{ gridTemplateColumns: grid }}
+                >
+                  <span className="flex flex-col leading-[1.3]">
+                    <span className="text-xs text-ink">{ukDate(fixture.dateTime)}</span>
+                    <span className="font-mono text-[11px] font-medium text-faint">
+                      {ukTime(fixture.dateTime)}
+                    </span>
+                  </span>
+                  <NextLink
+                    href={clubHref(fixture.home.club.slug)}
+                    className={cn(
+                      "truncate text-right hover:underline",
+                      homeIsClub ? "font-medium text-club" : "text-ink",
+                    )}
+                  >
+                    {fixture.home.club.name}
+                  </NextLink>
+                  <NextLink
+                    href={`/matches/${fixture.id}`}
+                    className="flex flex-col items-center leading-[1.3] hover:underline"
+                  >
+                    {fixture.scored ? (
+                      <>
+                        <span
+                          className={cn(
+                            "text-sm font-semibold leading-[1.3] tabular-nums",
+                            outcome === "W"
+                              ? "text-win"
+                              : outcome === "L"
+                                ? "text-loss"
+                                : "text-ink",
+                          )}
+                        >
+                          {fixture.home.score}–{fixture.away.score}
+                        </span>
+                        {fixture.home.ht !== null && fixture.away.ht !== null && (
+                          <span className="font-mono text-[11px] text-faint">
+                            HT {fixture.home.ht}–{fixture.away.ht}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-center text-[11px] leading-tight text-faint">
+                        No score in feed
+                      </span>
+                    )}
+                  </NextLink>
+                  <NextLink
+                    href={clubHref(fixture.away.club.slug)}
+                    className={cn(
+                      "truncate hover:underline",
+                      awayIsClub ? "font-medium text-club" : "text-ink",
+                    )}
+                  >
+                    {fixture.away.club.name}
+                  </NextLink>
+                  <span className="flex min-w-0 flex-col leading-[1.3]">
+                    <span className="truncate text-xs text-[#55554F]">{fixture.round}</span>
+                    <NextLink
+                      href={`/competitions/${fixture.competition.slug}`}
+                      className="truncate text-[11px] text-faint hover:underline"
+                    >
+                      {fixture.competition.name}
+                    </NextLink>
+                  </span>
+                  <span className="flex min-w-0 flex-col leading-[1.3]">
+                    <span className="truncate text-xs text-[#55554F]">{fixture.venue}</span>
+                    {fixture.attendance !== null && (
+                      <span className="text-[11px] text-faint">
+                        {fixture.attendance.toLocaleString("en-GB")} attendance
+                      </span>
+                    )}
+                  </span>
+                  {fixture.referee ? (
+                    <NextLink
+                      href={`/referees/${fixture.referee.slug}`}
+                      className="truncate text-xs text-[#55554F] hover:underline"
+                    >
+                      {fixture.referee.name}
+                    </NextLink>
+                  ) : (
+                    <span className="text-xs text-faint">Not in feed</span>
+                  )}
+                  {columns.map((asset) => {
+                    const id = key(fixture.id, asset);
+                    return (
+                      <span key={asset} className="flex justify-center">
+                        <input
+                          type="checkbox"
+                          aria-label={`${asset} · ${label}`}
+                          checked={selected.has(id)}
+                          onChange={() => toggle(id)}
+                          className="size-[17px] min-h-0 cursor-pointer accent-[var(--club)]"
+                        />
+                      </span>
+                    );
+                  })}
+                  <span className="flex justify-center">
+                    <NextLink
+                      href={`/matches/${fixture.id}`}
+                      aria-label={`Open match centre: ${label}`}
+                      className="grid size-7 place-items-center rounded-[3px] border border-line bg-panel text-ink hover:bg-subtle"
+                    >
+                      <ArrowRight className="size-3.5" />
+                    </NextLink>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-4 border-t border-line2 bg-[#F9FAFB] px-4 py-3 text-xs text-mute">
+            <span className="font-medium text-ink">{summary}</span>
+            <span>
+              Source: 2025/26 fixtures and results feeds. Kick-offs in UK time.
+              {sourceNote ? ` ${sourceNote}` : ""}
+            </span>
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setSelected({})}><RotateCcw className="size-3.5" />Clear</Button>
-        <Button size="sm" disabled={selectedCount === 0}><Download className="size-3.5" />Download{selectedCount ? ` ${selectedCount}` : ""}</Button>
-      </div>
-    </div>
+    </>
+  );
+}
 
-    <Panel className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-250 border-collapse text-left">
-          <thead>
-            <tr className="h-10 border-b border-border bg-muted/40">
-              <th className="px-4">Date</th>
-              <th className="px-3">Home</th>
-              <th className="px-3 text-center">Result</th>
-              <th className="px-3">Away</th>
-              <th className="px-3">Round</th>
-              <th className="px-3">Competition</th>
-              <th className="px-3">Status</th>
-              {columns.map((column) => <th key={column} className="px-3 text-center">
-                <button type="button" onClick={() => toggleColumn(column)} className="text-[10px] font-medium hover:text-primary">{column}</button>
-              </th>)}
-              <th className="px-4 text-center">Match Centre</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((row) => <tr key={row.id} className="h-11 border-b border-border/60 transition-colors last:border-0 hover:bg-primary/5">
-              <td className="whitespace-nowrap px-4 text-[11px] text-muted-foreground">{row.date}</td>
-              <td className="px-3 text-[13px] font-bold">{row.home}</td>
-              <td className="px-3 text-center">{row.score && row.score !== "Upcoming" ? <span className="inline-block rounded-[2px] bg-foreground px-2 py-1 font-mono text-xs font-bold tabular-nums text-background">{row.score}</span> : <span className="inline-block rounded-[2px] bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">{row.score ?? "Upcoming"}</span>}</td>
-              <td className="px-3 text-[13px] font-medium">{row.away || "Opponent not supplied"}</td>
-              <td className="px-3 text-[12px] text-muted-foreground">{row.round}</td>
-              <td className="px-3 text-[12px] text-muted-foreground">{row.competition}</td>
-              <td className="px-3"><span className={cn("text-[10px] font-bold uppercase tracking-wider", row.status === "Finalised" ? "text-success" : "text-primary")}>{row.status}</span></td>
-              {columns.map((column) => {
-                const key = `${row.id}:${column}`;
-                return <td key={column} className="px-3 py-3 text-center">
-                  <input type="checkbox" aria-label={`${column} for ${row.home} v ${row.away}`} checked={Boolean(selected[key])} onChange={() => toggle(key)} className="size-4 accent-primary" />
-                </td>;
-              })}
-              <td className="px-4 py-3 text-center">
-                {row.competitionId && row.matchId ? <Link to="/matches/$matchId/$tab" params={{ matchId: row.matchId, tab: "overview" }} className="inline-grid size-7 place-items-center rounded bg-foreground text-background hover:bg-primary" aria-label={`Open ${row.home} v ${row.away} in Match Centre`}>
-                  <ArrowRight className="size-3.5" />
-                </Link> : <span className="text-muted-foreground">—</span>}
-              </td>
-            </tr>)}
-          </tbody>
-        </table>
-      </div>
-      {filtered.length === 0 && <p className="p-8 text-center text-[12px] text-muted-foreground">No fixtures match these filters.</p>}
-      <div className="border-t border-border bg-muted/40 px-4 py-3 text-[11px] text-muted-foreground">Tick the assets you need, then download. Column headers select the whole column. Asset availability reflects what each match has connected.</div>
-    </Panel>
-  </div>;
+function summaryFor(rows: Fixture[], club: string): string {
+  const record = recordFor(rows, club);
+  return `${rows.length} ${rows.length === 1 ? "match" : "matches"} · ${record.won} won, ${record.drawn} drawn, ${record.lost} lost`;
+}
+
+function SelectBox({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<[string, string]>;
+}) {
+  return (
+    <label className="flex h-[30px] items-center rounded-[3px] border border-line bg-panel px-2.5">
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-0 bg-transparent font-medium text-ink outline-none"
+      >
+        {options.map(([optionValue, text]) => (
+          <option key={optionValue} value={optionValue}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }

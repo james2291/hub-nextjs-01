@@ -7,6 +7,7 @@ import {
   isEntityTab,
   legacyTab,
 } from "@/components/oval/entity-navigation";
+import { EntityFixtureCard } from "@/components/oval/entity-fixture-card";
 import { LegacyTabContent } from "@/components/oval/entity-tabs";
 import { teamHeader } from "@/server/entities";
 
@@ -24,5 +25,6 @@ export default async function TeamTabPage({ params }: { params: Params }) {
   const replacement = legacyTab("team", tab);
   if (replacement !== undefined) redirect(entityHref("team", teamId, replacement));
   if (!isEntityTab("team", tab)) notFound();
+  if (tab === "fixtures") return <EntityFixtureCard kind="team" id={teamId} />;
   return <LegacyTabContent tab={tab} />;
 }

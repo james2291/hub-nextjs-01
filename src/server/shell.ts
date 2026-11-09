@@ -19,6 +19,10 @@ export type ShellData = {
   user: { name: string; clubName: string; roleLabel: string };
   /** Sidebar "Next opponent": opponent's place name, e.g. "Exeter". Null when the season has no more fixtures. */
   nextOpponent: ShellLink | null;
+  /** Slug of the next opponent: links to that club go to Next opponent (HANDOFF.md section 7). */
+  nextOpponentSlug: string | null;
+  /** The signed-in user's club slug. */
+  clubSlug: string;
   /** Sidebar "Matches": the user's club's latest match. */
   latestMatch: ShellLink | null;
   fixtureCardHref: string;
@@ -82,6 +86,8 @@ export function getShellData(): ShellData {
     },
     nextOpponent:
       next && opponent ? { label: placeName(opponent.name), href: "/next-opponent" } : null,
+    nextOpponentSlug: opponent?.slug ?? null,
+    clubSlug: club,
     latestMatch: latest ? { label: matchLabel(latest, club), href: `/matches/${latest.id}` } : null,
     fixtureCardHref: `/teams/${club}/fixtures`,
     defaultPins: [
