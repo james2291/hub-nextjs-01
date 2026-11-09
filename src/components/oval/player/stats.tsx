@@ -37,10 +37,7 @@ export function PlayerStats({ slug }: { slug: string }) {
           title="Season profile"
           meta={peer ? `Hub ratings v ${peer.name}` : "Hub ratings"}
         >
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_70px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_70px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span>Measure</span>
             <span />
             <span className="text-right">Value</span>

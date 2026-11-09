@@ -187,10 +187,7 @@ export function TeamOverview({ slug }: { slug: string }) {
               .filter(Boolean)
               .join(" and ")}
           >
-            <div
-              role="row"
-              className="grid h-[30px] grid-cols-[70px_minmax(0,1fr)_24px_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-            >
+            <div className="grid h-[30px] grid-cols-[70px_minmax(0,1fr)_24px_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
               <span>Date</span>
               <span>Round</span>
               <span />
@@ -220,10 +217,7 @@ export function TeamOverview({ slug }: { slug: string }) {
             title="Key players"
             meta={<span className="font-mono text-[11px] font-medium text-club">DEMO DATA</span>}
           >
-            <div
-              role="row"
-              className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_50px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-            >
+            <div className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_50px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
               <span>Player</span>
               <span>Position</span>
               <span className="text-right">Apps</span>
@@ -265,7 +259,6 @@ function AgainstLeague({
   return (
     <>
       <div
-        role="row"
         className="grid h-[30px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
         style={{ gridTemplateColumns: columns }}
       >
@@ -326,10 +319,7 @@ function AgainstLeague({
 function ResultsTable({ fixtures, club }: { fixtures: Fixture[]; club: string }) {
   return (
     <>
-      <div
-        role="row"
-        className="grid h-[30px] grid-cols-[60px_minmax(0,1fr)_20px_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-      >
+      <div className="grid h-[30px] grid-cols-[60px_minmax(0,1fr)_20px_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
         <span>Date</span>
         <span>Opponent</span>
         <span />

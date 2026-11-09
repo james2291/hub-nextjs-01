@@ -119,7 +119,6 @@ export function TeamStats({ slug }: { slug: string }) {
           meta={<PanelLink href="/competitions/gallagher-prem/stats">Compare every club</PanelLink>}
         >
           <div
-            role="row"
             className="grid h-[30px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
             style={{ gridTemplateColumns: columns }}
           >
@@ -168,10 +167,7 @@ export function TeamStats({ slug }: { slug: string }) {
           })}
         </Section>
         <Section span={4} title="Home and away" meta="Regular season">
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,1fr)_100px_100px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,1fr)_100px_100px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span />
             <span className="text-right">Home</span>
             <span className="text-right">Away</span>

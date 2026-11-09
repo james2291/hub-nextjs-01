@@ -38,6 +38,12 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Return focus to whatever opened the dialog (the search box or ⌘K's target) when it closes.
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => opener?.focus();
+  }, []);
+
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     const found = q

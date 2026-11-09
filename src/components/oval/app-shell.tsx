@@ -130,8 +130,14 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
 
           {mobileOpen && (
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
               className="fixed inset-0 z-50 bg-ink/35 md:hidden"
               onClick={() => setMobileOpen(false)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setMobileOpen(false);
+              }}
             >
               <aside
                 className="flex h-full w-64 flex-col bg-side p-3"

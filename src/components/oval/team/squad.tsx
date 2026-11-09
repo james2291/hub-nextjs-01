@@ -262,10 +262,7 @@ export function TeamSquad({
         </div>
       ) : (
         <section className="rounded border border-line bg-panel">
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_60px_80px_minmax(0,1fr)_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_60px_80px_minmax(0,1fr)_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span>Player</span>
             <span>Position</span>
             <span className="text-right">Apps</span>

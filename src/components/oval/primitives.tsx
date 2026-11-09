@@ -2,7 +2,15 @@
 // and 8.2): data-note strip, crests, club colour bars, KPI strips, joined panels and table rows.
 // Server-safe: no hooks, so server and client components can both use them.
 import NextLink from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  cloneElement,
+  isValidElement,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 import type { ClubRef, ResultLetter } from "@/lib/rugby";
 import { cn } from "@/lib/utils";
@@ -181,10 +189,15 @@ export function ResultMark({
 /** W/L letters in mono, newest on the right. */
 export function FormLetters({ results }: { results: ResultLetter[] }) {
   return (
-    <span className="inline-flex gap-[3px] font-mono text-[11px] font-medium">
+    <span
+      role="img"
+      aria-label={`Last ${results.length}, oldest first: ${results.map((result) => (result === "W" ? "won" : result === "L" ? "lost" : "drawn")).join(", ")}`}
+      className="inline-flex gap-[3px] font-mono text-[11px] font-medium"
+    >
       {results.map((result, index) => (
         <span
           key={index}
+          aria-hidden="true"
           className={result === "W" ? "text-win" : result === "L" ? "text-loss" : "text-mute"}
         >
           {result}
@@ -329,7 +342,7 @@ export function HeadRow({
       )}
       style={{ gridTemplateColumns: columns }}
     >
-      {children}
+      {withCellRoles(children, "columnheader")}
     </div>
   );
 }
@@ -359,12 +372,12 @@ export function BodyRow({
   if (href)
     return (
       <NextLink role="row" href={href} className={classes} style={style}>
-        {children}
+        {withCellRoles(children, "cell")}
       </NextLink>
     );
   return (
     <div role="row" className={classes} style={style}>
-      {children}
+      {withCellRoles(children, "cell")}
     </div>
   );
 }
@@ -388,4 +401,17 @@ export function PageTitle({
       {actions}
     </div>
   );
+}
+
+/**
+ * Gives each child of a grid row an ARIA table role ("columnheader" or "cell"), looking through
+ * fragments, so div-based tables read as tables to screen readers.
+ */
+export function withCellRoles(children: ReactNode, role: "columnheader" | "cell"): ReactNode {
+  return Children.map(children, (child) => {
+    if (!isValidElement(child)) return child;
+    const element = child as ReactElement<{ children?: ReactNode; role?: string }>;
+    if (element.type === Fragment) return withCellRoles(element.props.children, role);
+    return element.props.role ? element : cloneElement(element, { role });
+  });
 }

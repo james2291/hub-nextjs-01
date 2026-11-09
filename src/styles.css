@@ -101,12 +101,16 @@
   --subtle: oklch(0.963 0.004 106.5); /* #F3F3F0 hover, secondary fills */
   --ink: oklch(0.21 0.006 285.9); /* #18181B primary text */
   --mute: oklch(0.508 0.011 106.8); /* #66665F secondary text, labels */
-  --faint: oklch(0.687 0.011 106.7); /* #9B9B93 tertiary text */
+  --faint: oklch(
+    0.548 0.011 106.7
+  ); /* #6F6F68 tertiary text (darkened from #9B9B93 for 4.5:1 contrast) */
   --sep: oklch(0.818 0.011 106.6); /* #C4C4BC breadcrumb separators */
   --side: oklch(0.222 0.006 271.1); /* #1A1B1E sidebar */
   --side-act: oklch(0.29 0.009 276.8); /* #2A2B30 active sidebar item */
   --side-ink: oklch(0.786 0.007 277.1); /* #B8B9BE sidebar text */
-  --side-lab: oklch(0.591 0.011 279.6); /* #7C7D84 sidebar labels */
+  --side-lab: oklch(
+    0.66 0.01 279.6
+  ); /* #8E8F96 sidebar labels (lightened from #7C7D84 for 4.5:1 on the sidebar) */
   --club: oklch(0.53 0.207 22.3); /* #C8102E club accent */
   --club-tint: oklch(0.971 0.009 8.5); /* #FBF3F4 your-club row */
   --win: oklch(0.512 0.127 149.7); /* #1E7A3C */
@@ -226,6 +230,13 @@
 
   table {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Visible keyboard focus everywhere; mouse clicks don't show it. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--club);
+    outline-offset: 2px;
+    border-radius: 3px;
   }
 
   thead th {
