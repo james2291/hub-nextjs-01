@@ -7,11 +7,10 @@ import { useMemo, useState } from "react";
 
 const lineoutImage = "/assets/rugby-lineout-clip.jpg";
 const scrumImage = "/assets/rugby-scrum-clip.jpg";
-import { Panel, StatStrip } from "@/components/oval/app-shell";
+import { PageBody, Panel, StatStrip } from "@/components/oval/app-shell";
 import { AIInsightSection, type InsightMatch } from "@/components/oval/ai-insights";
 import { CompetitionPeople as CompetitionPeopleWorkspace } from "@/components/oval/competition-people";
 import { entityTabLabel, useEntityWorkspace } from "@/components/oval/entity-workspace";
-import { CompetitionFixtureCard, FixtureCard, playerFixtureRows, refereeFixtureRows, teamFixtureRows } from "@/components/oval/fixture-card";
 import { LiveXmlBrowser, MatchCentre, type CentreMatch } from "@/components/oval/match-centre";
 import { OverviewCallout, OverviewGrid, OverviewResults, OverviewStats, OverviewTrend, ViewToggle, shortRound, splitFixtureName, type OverviewRow } from "@/components/oval/overview-layout";
 import { PlayerSpatialAnalysis, TeamPitchAnalysis } from "@/components/oval/player-spatial-analysis";
@@ -31,8 +30,29 @@ function useClipSearch() {
   return { initialGroup: search.group, lastMatches: search.last };
 }
 
-export function EntityTabPage({ tab }: { tab: string }) {
-  const { entityType, entity } = useEntityWorkspace();
+// Prototype tab content shown under the redesign's tab URLs until each page is rebuilt on the feeds.
+const LEGACY_CONTENT: Record<string, Record<string, string>> = {
+  competition: { "": "match-room", table: "table", people: "players", stats: "reports", feeds: "live-xml" },
+  team: { "": "match-room", squad: "players", stats: "reports" },
+  player: { "": "match-room", stats: "player-stats" },
+  referee: { "": "match-room", stats: "referee-stats" },
+};
+
+export function LegacyTabContent({ tab }: { tab: string }) {
+  const { entityType, entity, header } = useEntityWorkspace();
+  const legacy = LEGACY_CONTENT[entityType]?.[tab] ?? "match-room";
+  return (
+    <PageBody>
+      {entity ? (
+        <EntityTabPage entityType={entityType} entity={entity} tab={legacy} />
+      ) : (
+        <Panel className="p-6 text-[13px] text-mute">{header.title}: this tab is being rebuilt on the 2025/26 feeds.</Panel>
+      )}
+    </PageBody>
+  );
+}
+
+function EntityTabPage({ entityType, entity, tab }: { entityType: string; entity: Competition | Team | Player | Referee; tab: string }) {
   if (entityType === "competition") return <CompetitionTab competition={entity as Competition} tab={tab} />;
   if (entityType === "team") return <TeamTab team={entity as Team} tab={tab} />;
   if (entityType === "player") return <PlayerTab player={entity as Player} tab={tab} />;
@@ -53,7 +73,6 @@ function CompetitionTab({ competition, tab }: { competition: Competition; tab: s
   if (tab === "video-centre") return <EventsVideoCentre entityName={competition.name}><VideoCentre mode="competition" competition={competition} /></EventsVideoCentre>;
   if (tab === "table") return <><TabHeading title="Table" description={`Current standings for ${competition.name}.`} /><Standings competition={competition} /></>;
   if (tab === "live-xml") return <CompetitionLiveXml competition={competition} />;
-  if (tab === "fixture-card") return <CompetitionFixtureCardTab competition={competition} />;
   if (tab === "players") return <CompetitionPeople competition={competition} />;
   if (tab === "reports") return <EntityReports name={competition.name} kind="Competition" />;
   return <EmptyState title={entityTabLabel("competition", tab)} entityName={competition.name} />;
@@ -124,10 +143,6 @@ function FixtureTable({ competition }: { competition: Competition }) {
   return <Panel className="overflow-hidden"><div className="border-b border-border p-4"><h3 className="font-display font-semibold">Fixtures &amp; results</h3><p className="text-[11px] text-muted-foreground">Filtered to {competition.name}</p></div><div className="overflow-x-auto"><table className="w-full min-w-[640px] text-left text-xs"><thead className="bg-muted/70 text-[10px] uppercase text-muted-foreground"><tr><th className="px-4 py-2.5">Round</th><th>Fixture</th><th>Date</th><th>Venue</th><th>Result</th></tr></thead><tbody className="divide-y divide-border">{competition.fixtures.map((fixture) => <tr key={`${fixture.round}-${fixture.fixture}`}><td className="px-4 py-3 font-semibold">{fixture.round}</td><td className="font-semibold">{fixture.fixture}</td><td className="text-muted-foreground">{fixture.date}</td><td className="text-muted-foreground">{fixture.venue}</td><td className="font-display font-bold">{fixture.result}</td></tr>)}</tbody></table></div></Panel>;
 }
 
-function CompetitionFixtureCardTab({ competition }: { competition: Competition }) {
-  const { season } = useEntityWorkspace();
-  return <><TabHeading title="Fixture Card" description={`Fixtures, results and downloadable match assets for ${competition.name}.`} />{season === competition.season ? <CompetitionFixtureCard competition={competition} /> : <EmptyState title="Fixture Card" entityName={competition.name} detail={`No connected fixtures or assets are available for ${season}.`} />}</>;
-}
 
 function CompetitionPeople({ competition }: { competition: Competition }) {
   return <CompetitionPeopleWorkspace competition={competition} />;
@@ -143,7 +158,6 @@ function TeamTab({ team, tab }: { team: Team; tab: string }) {
   if (tab === "cohesion") return <TeamCohesion team={team} />;
   if (tab === "clips") return <ClipsTab subject={{ mode: "team", team }} name={team.name} groups={teamEventGroups} windows={[1, 4, 6]} />;
   if (tab === "match-room") return <TeamMatchRoom team={team} />;
-  if (tab === "fixture-card") return <TeamFixtureCardTab team={team} />;
   if (tab === "video-centre") return <EventsVideoCentre entityName={team.name}><VideoCentre key={JSON.stringify(clip)} mode="team" team={team} {...clip} /></EventsVideoCentre>;
   if (tab === "video-library") return <><TabHeading title="Video Library" description={`Pre-canned compilations and full match video for ${team.name}.`} /><TeamVideoLibrary team={team} /></>;
   if (tab === "players") return <TeamSquad team={team} />;
@@ -242,7 +256,6 @@ function PlayerTab({ player, tab }: { player: Player; tab: string }) {
   const clip = useClipSearch();
   if (tab === "clips") return <ClipsTab subject={{ mode: "player", player }} name={player.name} groups={playerEventGroups.slice(0, 4).concat(playerEventGroups.slice(4))} windows={[1, 3, 5]} />;
   if (tab === "match-room") return <PlayerMatchRoom player={player} />;
-  if (tab === "fixture-card") return <PlayerFixtureCardTab player={player} />;
   if (tab === "video-centre") return <EventsVideoCentre entityName={player.name}><VideoCentre key={JSON.stringify(clip)} mode="player" player={player} {...clip} /></EventsVideoCentre>;
   if (tab === "video-library") return <><TabHeading title="Video Library" description={`Tagged clips featuring ${player.name}.`} />{player.clips.length ? <VideoGrid items={player.clips.map((clip, index) => ({ title: clip.title, detail: `${clip.match} · ${clip.length}`, image: index % 2 ? scrumImage : lineoutImage }))} /> : <EmptyState title="Video Library" entityName={player.name} />}</>;
   if (tab === "player-stats") return <PlayerStats player={player} />;
@@ -285,7 +298,6 @@ function RefereeTab({ referee, tab }: { referee: Referee; tab: string }) {
   const clip = useClipSearch();
   if (tab === "clips") return <ClipsTab subject={{ mode: "referee", referee }} name={referee.name} groups={refereeEventGroups} windows={[1, 3, 5]} />;
   if (tab === "match-room") return <RefereeMatchRoom referee={referee} />;
-  if (tab === "fixture-card") return <RefereeFixtureCardTab referee={referee} />;
   if (tab === "video-centre") return <EventsVideoCentre entityName={referee.name}><VideoCentre key={JSON.stringify(clip)} mode="referee" referee={referee} {...clip} /></EventsVideoCentre>;
   if (tab === "video-library") return <><TabHeading title="Video Library" description={`Match footage involving ${referee.name}.`} /><EmptyState title="Video Library" entityName={referee.name} detail="No referee-indexed video is connected yet. Match appointments remain available in Match Room." /></>;
   if (tab === "referee-stats") return <RefereeStats referee={referee} />;
@@ -307,25 +319,9 @@ function RefereeMatchRoom({ referee }: { referee: Referee }) {
   >{season === "2025/26" ? <RefereeInsights referee={referee} season={season} /> : <EmptyState title="AI Officiating Summary" entityName={referee.name} detail={`No appointment records are available for ${season}.`} />}</OverviewGrid>;
 }
 
-function TeamFixtureCardTab({ team }: { team: Team }) {
-  const { season } = useEntityWorkspace();
-  return <><TabHeading title="Fixture Card" description={`Match assets filtered to ${team.name}.`} /><MatchRoomFixtureCard title={`${team.name} Fixture Card`} description="Fixtures, videos, reports and files connected to this team." rows={teamFixtureRows(team, competitions, season)} /></>;
-}
 
-function PlayerFixtureCardTab({ player }: { player: Player }) {
-  const { season } = useEntityWorkspace();
-  const team = getTeam(player.teamId);
-  return <><TabHeading title="Fixture Card" description={`Match assets filtered to ${player.name}'s appearances.`} /><MatchRoomFixtureCard title={`${player.name} Fixture Card`} description="Fixtures, videos, reports and files connected to this player." rows={playerFixtureRows(player, team, competitions, season)} /></>;
-}
 
-function RefereeFixtureCardTab({ referee }: { referee: Referee }) {
-  const { season } = useEntityWorkspace();
-  return <><TabHeading title="Fixture Card" description={`Match assets filtered to ${referee.name}'s appointments.`} /><MatchRoomFixtureCard title={`${referee.name} Fixture Card`} description="Fixtures, videos, reports and files connected to this referee." rows={refereeFixtureRows(referee, competitions, season)} /></>;
-}
 
-function MatchRoomFixtureCard({ title, description, rows }: { title: string; description: string; rows: ReturnType<typeof teamFixtureRows> }) {
-  return <section className="mt-5" aria-label={title}><div className="mb-3"><h3 className="font-display text-lg font-bold">{title}</h3><p className="mt-1 text-[11px] text-muted-foreground">{description}</p></div>{rows.length ? <FixtureCard rows={rows} /> : <EmptyState title="Fixture Card" entityName={title.replace(" Fixture Card", "")} detail="No connected fixtures or assets are available for the selected season." />}</section>;
-}
 
 function RefereeInsights({ referee, season }: { referee: Referee; season: string }) {
   const recent = referee.appointments.slice(0, 5);

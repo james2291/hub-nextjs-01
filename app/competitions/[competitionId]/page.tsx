@@ -1,5 +1,10 @@
-import { redirect } from "next/navigation";
+import { CompetitionOverview } from "@/components/oval/competition/overview";
 
-export default async function CompetitionIndex({ params }: { params: Promise<{ competitionId: string }> }) {
-  redirect(`/competitions/${(await params).competitionId}/match-room`);
+// Overview tab.
+export default async function CompetitionOverviewPage({
+  params,
+}: {
+  params: Promise<{ competitionId: string }>;
+}) {
+  return <CompetitionOverview slug={(await params).competitionId} />;
 }

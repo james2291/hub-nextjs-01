@@ -1,31 +1,57 @@
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import type { ReactNode } from "react";
 
 import { Providers } from "@/app-providers";
+import { AppShell } from "@/components/oval/app-shell";
+import { getShellData } from "@/server/shell";
 import "@/styles.css";
+
+// IBM Plex from the design handoff (OFL, app/fonts/OFL.txt), self-hosted.
+const plexSans = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-sans-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-sans-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/ibm-plex-sans-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-plex-sans",
+  display: "swap",
+});
+
+const plexMono = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-mono-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-latin-500-normal.woff2", weight: "500", style: "normal" },
+  ],
+  variable: "--font-plex-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Oval Hub",
   description: "Rugby video and performance analysis for teams and coaches.",
   authors: [{ name: "Oval Insights" }],
   icons: { icon: "/favicon.png" },
-  openGraph: { title: "Oval Hub", description: "Rugby video and performance analysis for teams and coaches.", type: "website" },
+  openGraph: {
+    title: "Oval Hub",
+    description: "Rugby video and performance analysis for teams and coaches.",
+    type: "website",
+  },
   twitter: { card: "summary_large_image" },
 };
+
+// The shell reads the hub clock (next opponent, latest match), so render per request.
+export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font -- same Plex stylesheet the prototype loaded */}
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
-      </head>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <AppShell data={getShellData()}>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

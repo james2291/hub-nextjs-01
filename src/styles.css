@@ -68,51 +68,91 @@
   --color-pitch-line: var(--pitch-line);
   --color-pitch-overlay: var(--pitch-overlay);
   --color-pitch-heat: var(--pitch-heat);
-  --font-display: "IBM Plex Sans", sans-serif;
-  --font-sans: "IBM Plex Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --color-page: var(--page);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-line2: var(--line2);
+  --color-subtle: var(--subtle);
+  --color-ink: var(--ink);
+  --color-mute: var(--mute);
+  --color-faint: var(--faint);
+  --color-sep: var(--sep);
+  --color-side: var(--side);
+  --color-side-act: var(--side-act);
+  --color-side-ink: var(--side-ink);
+  --color-side-lab: var(--side-lab);
+  --color-club: var(--club);
+  --color-club-tint: var(--club-tint);
+  --color-win: var(--win);
+  --color-loss: var(--loss);
+  --color-amber: var(--amber);
+  --color-pitch2: var(--pitch2);
+  --font-display: var(--font-plex-sans), "IBM Plex Sans", sans-serif;
+  --font-sans: var(--font-plex-sans), "IBM Plex Sans", sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", monospace;
 }
 
 :root {
+  /* Oval Hub redesign tokens (design/oval-hub-handoff/HANDOFF.md section 1). Hex in comments. */
+  --page: oklch(0.973 0.003 106.4); /* #F6F6F4 app background */
+  --panel: oklch(1 0 0); /* #FFFFFF cards and panels */
+  --line: oklch(0.911 0.007 106.5); /* #E2E2DD panel borders, grid gaps */
+  --line2: oklch(0.945 0.005 106.5); /* #EDEDE9 row dividers */
+  --subtle: oklch(0.963 0.004 106.5); /* #F3F3F0 hover, secondary fills */
+  --ink: oklch(0.21 0.006 285.9); /* #18181B primary text */
+  --mute: oklch(0.508 0.011 106.8); /* #66665F secondary text, labels */
+  --faint: oklch(0.687 0.011 106.7); /* #9B9B93 tertiary text */
+  --sep: oklch(0.818 0.011 106.6); /* #C4C4BC breadcrumb separators */
+  --side: oklch(0.222 0.006 271.1); /* #1A1B1E sidebar */
+  --side-act: oklch(0.29 0.009 276.8); /* #2A2B30 active sidebar item */
+  --side-ink: oklch(0.786 0.007 277.1); /* #B8B9BE sidebar text */
+  --side-lab: oklch(0.591 0.011 279.6); /* #7C7D84 sidebar labels */
+  --club: oklch(0.53 0.207 22.3); /* #C8102E club accent */
+  --club-tint: oklch(0.971 0.009 8.5); /* #FBF3F4 your-club row */
+  --win: oklch(0.512 0.127 149.7); /* #1E7A3C */
+  --loss: oklch(0.5 0.182 29.5); /* #B42318 */
+  --amber: oklch(0.543 0.123 61.8); /* #A15C07 */
+  --pitch2: oklch(0.441 0.087 150); /* #2A6038 */
+
   --radius: 0.25rem;
-  --background: oklch(0.968 0.002 100);
-  --foreground: oklch(0.25 0.006 210);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.39 0.14 23);
-  --primary-foreground: oklch(0.98 0.003 165);
-  --secondary: oklch(0.94 0.006 165);
-  --secondary-foreground: oklch(0.25 0.006 210);
-  --muted: oklch(0.94 0.006 165);
-  --muted-foreground: oklch(0.52 0.012 210);
-  --accent: oklch(0.53 0.23 10);
-  --accent-foreground: oklch(0.98 0.003 165);
-  --highlight: oklch(0.53 0.23 10);
-  --success: oklch(0.52 0.12 150);
-  --pitch: oklch(0.48 0.17 145);
+  --background: var(--page);
+  --foreground: var(--ink);
+  --card: var(--panel);
+  --card-foreground: var(--ink);
+  --popover: var(--panel);
+  --popover-foreground: var(--ink);
+  --primary: var(--club);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: var(--subtle);
+  --secondary-foreground: var(--ink);
+  --muted: var(--subtle);
+  --muted-foreground: var(--mute);
+  --accent: var(--subtle);
+  --accent-foreground: var(--ink);
+  --highlight: var(--club);
+  --success: var(--win);
+  --pitch: oklch(0.476 0.094 150.1);
   --pitch-frame: oklch(0.2 0.035 245);
   --pitch-line: oklch(0.98 0.01 155);
   --pitch-overlay: oklch(0.3 0.09 252);
   --pitch-heat: oklch(0.75 0.19 82);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: var(--loss);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.89 0.007 165);
-  --input: oklch(0.89 0.007 165);
-  --ring: oklch(0.39 0.14 23);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--ink);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.22 0.01 265);
-  --sidebar-foreground: oklch(0.94 0.004 260);
+  --sidebar: var(--side);
+  --sidebar-foreground: var(--side-ink);
   --sidebar-primary: oklch(0.208 0.042 265.755);
   --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.27 0.01 265);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.3 0.008 265);
+  --sidebar-accent: var(--side-act);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: var(--side-act);
   --sidebar-ring: oklch(0.704 0.04 256.788);
 }
 
@@ -165,18 +205,40 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 13px;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  button,
+  a,
+  input,
+  select {
     letter-spacing: 0;
   }
 
-  button, a, input, select { letter-spacing: 0; }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
 
-  h1, h2, h3, h4 { font-family: var(--font-display); }
+  table {
+    font-variant-numeric: tabular-nums;
+  }
 
-  table { font-variant-numeric: tabular-nums; }
+  thead th {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-mute);
+  }
 
-  thead th { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-muted-foreground); }
-
-  button, input, select { min-height: 30px; }
+  button,
+  input,
+  select {
+    min-height: 30px;
+  }
 }
 
 @utility mesh-background {

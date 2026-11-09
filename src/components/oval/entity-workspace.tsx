@@ -1,23 +1,28 @@
 "use client";
 
-import { ShieldCheck, Trophy, UserRound, Users } from "lucide-react";
-import { Link } from "@/lib/link";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+// Entity header + tab row (HANDOFF.md section 2). Wraps every Competition, Team, Player and
+// Referee page. Also provides the legacy prototype record to tab content not yet rebuilt on feeds.
+import NextLink from "next/link";
+import { usePathname } from "next/navigation";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-import { AppShell } from "@/components/oval/app-shell";
-import type { Competition, EntityKind, Player, Referee, Team } from "@/data/hub";
-import { entityNavigation } from "@/components/oval/entity-navigation";
-
-export { entityNavigation, entityTabLabel, isEntityTab, type EntityTabSlug } from "@/components/oval/entity-navigation";
+import { entityHref, entityNavigation, type EntityKind } from "@/components/oval/entity-navigation";
+import { Crest, PlainCrest } from "@/components/oval/primitives";
+import { Button } from "@/components/ui/button";
+import type { Competition, Player, Referee, Team } from "@/data/hub";
 import { cn } from "@/lib/utils";
+import type { EntityHeaderData } from "@/server/entities";
 
-type EntityRecord = Competition | Team | Player | Referee;
+export { entityTabLabel, isEntityTab } from "@/components/oval/entity-navigation";
+
+type LegacyRecord = Competition | Team | Player | Referee;
 
 type WorkspaceContextValue = {
   entityType: EntityKind;
-  entity: EntityRecord;
+  /** The prototype record (src/data/hub.ts), when one exists for this id. */
+  entity: LegacyRecord | undefined;
+  header: EntityHeaderData;
   season: string;
-  setSeason: (season: string) => void;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -28,101 +33,81 @@ export function useEntityWorkspace() {
   return value;
 }
 
-export function EntityWorkspace({ entityType, entity, children }: { entityType: EntityKind; entity: EntityRecord; children: ReactNode }) {
-  const initialSeason = "season" in entity ? entity.season : "2025/26";
-  const [season, setSeason] = useState(initialSeason);
-  const context = useMemo(() => ({ entityType, entity, season, setSeason }), [entityType, entity, season]);
-
+export function EntityWorkspace({
+  header,
+  legacy,
+  children,
+}: {
+  header: EntityHeaderData;
+  legacy?: LegacyRecord | undefined;
+  children: ReactNode;
+}) {
+  const context = useMemo(
+    () => ({ entityType: header.kind, entity: legacy, header, season: "2025/26" }),
+    [header, legacy],
+  );
   return (
     <WorkspaceContext.Provider value={context}>
-      <AppShell>
-        <EntityHeader entityType={entityType} entity={entity} season={season} onSeasonChange={setSeason} />
-        <EntityTabs entityType={entityType} entityId={entity.id} entityName={entity.name} />
-        {children}
-      </AppShell>
+      <EntityHeader header={header} />
+      {children}
     </WorkspaceContext.Provider>
   );
 }
 
-function EntityTabs({ entityType, entityId, entityName }: { entityType: EntityKind; entityId: string; entityName: string }) {
-  return <nav className="mb-5 flex gap-5 overflow-x-auto border-b border-border" aria-label={`${entityName} sections`}>
-    {entityNavigation[entityType].filter((item) => entityType !== "team" || item.slug !== "head-to-head" || entityId !== "harlequins").map(({ label, slug }) => {
-      const classes = "shrink-0 border-b-2 border-transparent py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground";
-      const activeProps = { className: "border-primary font-bold text-primary" };
-      if (entityType === "competition") return <Link key={slug} to="/competitions/$competitionId/$tab" params={{ competitionId: entityId, tab: slug }} className={classes} activeProps={activeProps} activeOptions={{ exact: true }}>{label}</Link>;
-      if (entityType === "team") return <Link key={slug} to="/teams/$teamId/$tab" params={{ teamId: entityId, tab: slug }} className={classes} activeProps={activeProps} activeOptions={{ exact: true }}>{label}{slug === "head-to-head" && <span className="ml-1.5 text-[11px] text-muted-foreground">v Harlequins</span>}</Link>;
-      if (entityType === "player") return <Link key={slug} to="/players/$playerId/$tab" params={{ playerId: entityId, tab: slug }} className={classes} activeProps={activeProps} activeOptions={{ exact: true }}>{label}</Link>;
-      return <Link key={slug} to="/referees/$refereeId/$tab" params={{ refereeId: entityId, tab: slug }} className={classes} activeProps={activeProps} activeOptions={{ exact: true }}>{label}</Link>;
-    })}
-  </nav>;
-}
-
-export function EntitySideNav({ entityType, entityId, entityName }: { entityType: EntityKind; entityId: string; entityName: string }) {
-  const items = entityNavigation[entityType].filter((item) => entityType !== "team" || item.slug !== "head-to-head" || entityId !== "harlequins");
+export function EntityHeader({ header }: { header: EntityHeaderData }) {
+  const pathname = usePathname() ?? "";
+  const base = entityHref(header.kind, header.id);
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-4 px-2">
-        <div className="text-[10px] font-semibold uppercase text-muted-foreground">{entityType} workspace</div>
-        <div className="mt-1 truncate font-display text-sm font-bold">{entityName}</div>
+    <section className="border-b border-line bg-panel px-4 pt-4 md:px-6">
+      <div className="flex flex-wrap items-center gap-3">
+        {header.crest.colour && header.crest.onColour ? (
+          <Crest
+            code={header.crest.code}
+            colour={header.crest.colour}
+            onColour={header.crest.onColour}
+          />
+        ) : (
+          <PlainCrest code={header.crest.code} />
+        )}
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold leading-[1.2]">{header.title}</h1>
+          <div className="text-xs text-mute">{header.meta}</div>
+        </div>
+        <div className="flex gap-2">
+          {header.actions.map((action) => (
+            <Button key={action} variant="outline" type="button">
+              {action}
+            </Button>
+          ))}
+        </div>
       </div>
-      <nav className="space-y-1" aria-label={`${entityName} navigation`}>
-        {items.map(({ label, slug, icon: Icon }) => {
-          const className = "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
-          const activeProps = { className: "bg-primary/10 text-primary" };
-          if (entityType === "competition") return <Link key={slug} to="/competitions/$competitionId/$tab" params={{ competitionId: entityId, tab: slug }} className={className} activeProps={activeProps} activeOptions={{ exact: true }}><Icon className="size-4" /><span>{label}</span><span className="ml-auto hidden size-1.5 rounded-full bg-highlight [[data-status=active]_&]:block" /></Link>;
-          if (entityType === "team") return <Link key={slug} to="/teams/$teamId/$tab" params={{ teamId: entityId, tab: slug }} className={className} activeProps={activeProps} activeOptions={{ exact: true }}><Icon className="size-4" /><span>{label}</span><span className="ml-auto hidden size-1.5 rounded-full bg-highlight [[data-status=active]_&]:block" /></Link>;
-          if (entityType === "player") return <Link key={slug} to="/players/$playerId/$tab" params={{ playerId: entityId, tab: slug }} className={className} activeProps={activeProps} activeOptions={{ exact: true }}><Icon className="size-4" /><span>{label}</span><span className="ml-auto hidden size-1.5 rounded-full bg-highlight [[data-status=active]_&]:block" /></Link>;
-          return <Link key={slug} to="/referees/$refereeId/$tab" params={{ refereeId: entityId, tab: slug }} className={className} activeProps={activeProps} activeOptions={{ exact: true }}><Icon className="size-4" /><span>{label}</span><span className="ml-auto hidden size-1.5 rounded-full bg-highlight [[data-status=active]_&]:block" /></Link>;
+      <nav aria-label={`${header.title} sections`} className="mt-3 flex gap-[22px] overflow-x-auto">
+        {entityNavigation[header.kind].map((tab) => {
+          const href = entityHref(header.kind, header.id, tab.slug);
+          const active =
+            tab.slug === ""
+              ? pathname === base
+              : pathname === href || pathname.startsWith(`${href}/`);
+          return (
+            <NextLink
+              key={tab.slug || "overview"}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "-mb-px flex h-[38px] shrink-0 items-center whitespace-nowrap border-b-2 px-0.5",
+                active
+                  ? "border-ink font-medium text-ink"
+                  : "border-transparent text-mute hover:text-ink",
+              )}
+            >
+              {tab.label}
+              {tab.tag && (
+                <span className="ml-1.5 text-[11px] font-normal text-faint">{tab.tag}</span>
+              )}
+            </NextLink>
+          );
         })}
       </nav>
-      <Link to="/" className="mt-auto flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-primary hover:underline">Back to Oval Hub</Link>
-    </div>
+    </section>
   );
-}
-
-function EntityHeader({ entityType, entity, season, onSeasonChange }: { entityType: EntityKind; entity: EntityRecord; season: string; onSeasonChange: (value: string) => void }) {
-  const initials = entity.name.split(" ").map((word) => word[0]).join("").slice(0, 2).toUpperCase();
-  const Icon = entityType === "competition" ? Trophy : entityType === "team" ? Users : entityType === "player" ? UserRound : ShieldCheck;
-  const details = getEntityDetails(entityType, entity);
-
-  return (
-    <header className="mb-1 pb-3">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className={cn("grid size-14 shrink-0 place-items-center rounded bg-primary text-xl font-bold text-primary-foreground shadow-lg shadow-primary/20", (entityType === "player" || entityType === "referee") && "rounded-full")}>
-            <Icon className="absolute size-5 opacity-0" aria-hidden="true" />{initials}
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{entityType}</div>
-            <h1 className="truncate text-3xl font-bold tracking-tight">{entity.name}</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">{details}</p>
-          </div>
-        </div>
-        <label className="flex h-9 w-fit items-center gap-2 rounded-md border border-border bg-card px-3 text-xs">
-          <span className="text-muted-foreground">Season</span>
-          <select value={season} onChange={(event) => onSeasonChange(event.target.value)} className="bg-transparent font-semibold outline-none" aria-label="Season">
-            <option>2025/26</option>
-            <option>2024/25</option>
-          </select>
-        </label>
-      </div>
-    </header>
-  );
-}
-
-function getEntityDetails(entityType: EntityKind, entity: EntityRecord) {
-  if (entityType === "competition") {
-    const competition = entity as Competition;
-    return `${competition.status} · ${competition.stage} · ${competition.matches} matches`;
-  }
-  if (entityType === "team") {
-    const team = entity as Team;
-    return `${team.position} · ${team.record} · Head coach ${team.coach}`;
-  }
-  if (entityType === "player") {
-    const player = entity as Player;
-    return `${player.position} · ${player.apps} appearances · ${player.mins} minutes`;
-  }
-  const referee = entity as Referee;
-  return `${referee.union} · ${referee.panel} · ${referee.matches} matches this season`;
 }

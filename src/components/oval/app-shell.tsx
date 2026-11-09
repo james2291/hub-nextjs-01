@@ -1,22 +1,42 @@
 "use client";
 
+// App shell (HANDOFF.md section 2): 200px dark sidebar, 48px top bar with breadcrumbs, search,
+// Downloads and Pin. Rendered once by app/layout.tsx with data from src/server/shell.ts.
+import { Home, Menu, Pin, PinOff, Search, X } from "lucide-react";
+import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { Link } from "@/lib/link";
-import { ChevronRight, Home, Menu, Pin, PinOff, Search, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-const ovalLogo = "/assets/oval-logo.png";
 import { GlobalSearch } from "@/components/oval/global-search";
 import { Button } from "@/components/ui/button";
-import { getNextFixture } from "@/data/hub";
-import { usePins } from "@/lib/pins";
+import { usePins, type PinnedPage } from "@/lib/pins";
 import { cn } from "@/lib/utils";
+import type { ShellData } from "@/server/shell";
 
-export function AppShell({ children, sideNavigation }: { children: ReactNode; sideNavigation?: ReactNode }) {
+const ovalLogo = "/assets/oval-logo.png";
+
+const ShellContext = createContext<ShellData | null>(null);
+
+export function useShell(): ShellData {
+  const value = useContext(ShellContext);
+  if (!value) throw new Error("useShell must be used inside AppShell");
+  return value;
+}
+
+/** Where a club name links: the team's Overview, or Next opponent for the next opponent. */
+export function useClubHref(): (clubSlug: string) => string {
+  const shell = useContext(ShellContext);
+  return (clubSlug: string) =>
+    shell?.nextOpponentSlug === clubSlug && shell.nextOpponent
+      ? shell.nextOpponent.href
+      : `/teams/${clubSlug}`;
+}
+
+export function AppShell({ data, children }: { data: ShellData; children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname() ?? "/";
-  const breadcrumb = useMemo(() => buildBreadcrumb(pathname), [pathname]);
+  const breadcrumb = useMemo(() => buildBreadcrumb(pathname, data), [pathname, data]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -29,70 +49,295 @@ export function AppShell({ children, sideNavigation }: { children: ReactNode; si
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  return <div className="min-h-screen bg-background font-sans text-foreground antialiased md:flex">
-    <aside className="hidden h-screen w-50 shrink-0 flex-col bg-sidebar px-2.5 py-3.5 text-sidebar-foreground md:sticky md:top-0 md:flex">
-      <Link to="/" className="flex h-8 items-center gap-2 px-2.5 text-sm font-semibold text-background"><img src={ovalLogo} alt="" className="size-5 object-contain" />Oval Hub</Link>
-      {sideNavigation ?? <NavLinks />}
-      <div className="mt-auto border-t border-sidebar-border px-2.5 py-3 text-xs">James Molyneux<br/><span className="text-sidebar-foreground/55">Harlequins · Analysis</span></div>
-    </aside>
+  return (
+    <ShellContext.Provider value={data}>
+      <div className="min-h-screen bg-page text-[13px] text-ink antialiased md:flex">
+        <aside className="hidden h-screen w-[200px] shrink-0 flex-col bg-side px-2.5 py-3.5 md:sticky md:top-0 md:flex">
+          <Sidebar data={data} pathname={pathname} />
+        </aside>
 
-    <div className="min-w-0 flex-1">
-      <header className="sticky top-0 z-40 flex h-12 items-center gap-3 border-b border-border bg-card px-4 md:px-6">
-        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open navigation" onClick={() => setMobileOpen(true)}><Menu className="size-4"/></Button>
-        <div className="min-w-0 truncate text-[13px]">{breadcrumb.map((part, index) => <span key={`${part}-${index}`}><span className={index === breadcrumb.length - 1 ? "font-medium" : "text-muted-foreground"}>{part}</span>{index < breadcrumb.length - 1 && <span className="mx-2 text-border">/</span>}</span>)}</div>
-        <Button variant="outline" className="ml-auto hidden w-80 justify-start bg-background text-muted-foreground lg:flex" onClick={() => setSearchOpen(true)}><Search className="size-3.5"/><span className="flex-1 text-left">Search</span><kbd className="font-mono text-[11px]">⌘K</kbd></Button>
-        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Search" onClick={() => setSearchOpen(true)}><Search className="size-4"/></Button>
-        <PinButton pathname={pathname} fallback={breadcrumb[breadcrumb.length - 1] ?? "Page"} />
-      </header>
-      <main className="px-4 py-5 md:px-6"><div className="mx-auto max-w-[1500px]">{children}</div></main>
-    </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center gap-4 border-b border-line bg-panel px-4 md:px-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              aria-label="Open navigation"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="size-4" />
+            </Button>
+            <nav aria-label="Breadcrumb" className="min-w-0 truncate whitespace-nowrap text-[13px]">
+              {breadcrumb.map((part, index) => (
+                <span key={`${part.label}-${index}`}>
+                  {index > 0 && <span className="mx-1 text-sep">/</span>}
+                  {part.href && index < breadcrumb.length - 1 ? (
+                    <NextLink href={part.href} className="text-mute hover:text-ink">
+                      {part.label}
+                    </NextLink>
+                  ) : (
+                    <span
+                      className={
+                        index === breadcrumb.length - 1 ? "font-medium text-ink" : "text-mute"
+                      }
+                    >
+                      {part.label}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </nav>
+            <button
+              type="button"
+              aria-label="Search (⌘K)"
+              onClick={() => setSearchOpen(true)}
+              className="ml-auto hidden h-[30px] w-80 items-center gap-2 rounded-[3px] border border-line bg-page px-2.5 text-faint hover:border-faint lg:flex"
+            >
+              <Search className="size-3.5" />
+              <span className="flex-1 text-left">Search</span>
+              <span className="font-mono text-[11px] font-medium text-mute">⌘K</span>
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto lg:hidden"
+              aria-label="Search"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search className="size-4" />
+            </Button>
+            <NextLink
+              href={data.downloadsHref}
+              className="flex h-[30px] items-center gap-2 rounded-[3px] border border-line bg-panel px-2.5 font-medium text-ink hover:bg-subtle"
+            >
+              Downloads <span className="font-mono text-xs font-medium text-mute">3</span>
+            </NextLink>
+            <PinButton
+              pathname={pathname}
+              label={
+                breadcrumb.at(-2)?.label && breadcrumb.at(-1)?.label === "Overview"
+                  ? (breadcrumb.at(-2)?.label ?? "Page")
+                  : (breadcrumb.at(-1)?.label ?? "Page")
+              }
+              defaults={pinDefaults(data)}
+            />
+          </header>
+          <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+        </div>
 
-    {mobileOpen && <div className="fixed inset-0 z-50 bg-foreground/35 md:hidden" onClick={() => setMobileOpen(false)}><aside className="flex h-full w-64 flex-col bg-sidebar p-3 text-sidebar-foreground" onClick={(event) => event.stopPropagation()}><div className="mb-3 flex items-center justify-between px-2"><span className="font-semibold text-background">Oval Hub</span><Button variant="ghost" size="icon" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X className="size-4"/></Button></div><div onClick={(event) => { if ((event.target as HTMLElement).closest("a")) setMobileOpen(false); }}>{sideNavigation ?? <NavLinks />}</div></aside></div>}
-    <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-  </div>;
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-ink/35 md:hidden"
+            onClick={() => setMobileOpen(false)}
+          >
+            <aside
+              className="flex h-full w-64 flex-col bg-side p-3"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close navigation"
+                  className="text-side-ink hover:bg-side-act hover:text-white"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div
+                className="flex flex-1 flex-col"
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest("a")) setMobileOpen(false);
+                }}
+              >
+                <Sidebar data={data} pathname={pathname} />
+              </div>
+            </aside>
+          </div>
+        )}
+        <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      </div>
+    </ShellContext.Provider>
+  );
 }
 
-function NavLinks() {
-  const next = getNextFixture("harlequins");
-  const opponent = next?.opponent;
-  const { home, pins } = usePins();
-  const linkClass = "flex h-7.5 items-center rounded-[3px] px-2.5 text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-background";
-  const activeProps = { className: "bg-sidebar-accent text-background font-medium" };
-  return <nav aria-label="Main" className="mt-1 flex flex-col gap-px">
-    <p className="px-2.5 pb-1 pt-4 text-[11px] text-sidebar-foreground/50">This week</p>
-    {home ? <a href={home} className={linkClass}>Home <span className="ml-auto truncate pl-2 text-xs text-sidebar-foreground/50">{pins.find((pin) => pin.path === home)?.label}</span></a> : <Link to="/" activeOptions={{ exact: true }} className={linkClass} activeProps={activeProps}>Home</Link>}
-    {home && <Link to="/" activeOptions={{ exact: true }} className={linkClass} activeProps={activeProps}>Week overview</Link>}
-    <Link to="/teams/$teamId/$tab" params={{ teamId: opponent?.id ?? "harlequins", tab: opponent ? "head-to-head" : "match-room" }} className={linkClass} activeProps={activeProps}>Next opponent <span className="ml-auto truncate pl-2 text-xs text-sidebar-foreground/50">{opponent?.name ?? "Not supplied"}</span></Link>
-    <p className="px-2.5 pb-1 pt-4 text-[11px] text-sidebar-foreground/50">Library</p>
-    <Link to="/teams/$teamId/$tab" params={{ teamId: "harlequins", tab: "fixture-card" }} className={linkClass} activeProps={activeProps}>Fixture Card</Link>
-    <p className="flex items-center gap-1.5 px-2.5 pb-1 pt-4 text-[11px] text-sidebar-foreground/50"><Pin className="size-3"/>Pinned</p>
-    <PinnedLinks linkClass={linkClass} />
-  </nav>;
+function pinDefaults(data: ShellData): PinnedPage[] {
+  return data.defaultPins.map((pin) => ({ path: pin.href, label: pin.label }));
 }
 
-function PinButton({ pathname, fallback }: { pathname: string; fallback: string }) {
-  const { isPinned, togglePin } = usePins();
+function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
+  const { pins, home, setHome } = usePins(pinDefaults(data));
+  const item = (active: boolean) =>
+    cn(
+      "flex h-[30px] items-center rounded-[3px] px-2.5 text-[13px] no-underline",
+      active
+        ? "bg-side-act font-medium text-white"
+        : "text-side-ink hover:bg-side-act/60 hover:text-white",
+    );
+  const label = "px-2.5 pb-1 pt-4 text-[11px] text-side-lab";
+  return (
+    <>
+      <NextLink href="/" className="flex items-center gap-2 px-2.5 pb-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element -- 20px logo from public/ */}
+        <img src={ovalLogo} alt="" className="size-5 object-contain object-top" />
+        <span className="text-[13px] font-medium text-white">Oval Hub</span>
+      </NextLink>
+      <nav aria-label="Main" className="flex flex-col gap-px">
+        <div className={label}>This week</div>
+        <NextLink href={home ?? "/"} className={item(pathname === "/")}>
+          Home
+          {home && (
+            <span className="ml-auto truncate pl-2 text-xs text-side-lab">
+              {pins.find((pin) => pin.path === home)?.label}
+            </span>
+          )}
+        </NextLink>
+        <NextLink
+          href={data.nextOpponent?.href ?? "/next-opponent"}
+          className={item(pathname.startsWith("/opposition"))}
+        >
+          Next opponent
+          <span className="ml-auto truncate pl-2 text-xs text-side-lab">
+            {data.nextOpponent?.label ?? "None"}
+          </span>
+        </NextLink>
+        <div className={label}>Library</div>
+        <NextLink
+          href={data.latestMatch?.href ?? data.fixtureCardHref}
+          className={item(pathname.startsWith("/matches"))}
+        >
+          Matches
+        </NextLink>
+        <NextLink href={data.fixtureCardHref} className={item(pathname === data.fixtureCardHref)}>
+          Fixture Card
+        </NextLink>
+        <div className={label}>Pinned</div>
+        {pins.length === 0 && (
+          <p className="px-2.5 text-[11px] text-side-lab">Use Pin in the top bar to add pages.</p>
+        )}
+        {pins.map((pin) => (
+          <div key={pin.path} className="group flex items-center">
+            <NextLink href={pin.path} className={cn(item(pathname === pin.path), "min-w-0 flex-1")}>
+              <span className="truncate">{pin.label}</span>
+            </NextLink>
+            <button
+              type="button"
+              onClick={() => setHome(home === pin.path ? null : pin.path)}
+              aria-label={
+                home === pin.path ? `Remove ${pin.label} as home` : `Set ${pin.label} as home`
+              }
+              title={home === pin.path ? "Home page" : "Set as home"}
+              className={cn(
+                "grid size-[30px] shrink-0 place-items-center rounded-[3px] hover:bg-side-act",
+                home === pin.path
+                  ? "text-white"
+                  : "text-side-lab opacity-0 focus:opacity-100 group-hover:opacity-100",
+              )}
+            >
+              <Home className="size-3" />
+            </button>
+          </div>
+        ))}
+      </nav>
+      <div className="mt-auto border-t border-side-act p-2.5 text-xs text-side-ink">
+        {data.user.name}
+        <br />
+        <span className="text-side-lab">
+          {data.user.clubName} · {data.user.roleLabel}
+        </span>
+      </div>
+    </>
+  );
+}
+
+function PinButton({
+  pathname,
+  label,
+  defaults,
+}: {
+  pathname: string;
+  label: string;
+  defaults: PinnedPage[];
+}) {
+  const { isPinned, togglePin } = usePins(defaults);
   const pinned = isPinned(pathname);
-  return <Button variant={pinned ? "dark" : "outline"} aria-pressed={pinned} onClick={() => togglePin({ path: pathname, label: (document.title.split(" | ")[0] || fallback).trim() })}>{pinned ? <PinOff className="size-3.5"/> : <Pin className="size-3.5"/>}{pinned ? "Pinned" : "Pin"}</Button>;
+  return (
+    <Button
+      variant="outline"
+      aria-pressed={pinned}
+      aria-label={pinned ? "Unpin this page" : "Pin this page"}
+      title={pinned ? "Unpin" : "Pin to sidebar"}
+      onClick={() => togglePin({ path: pathname, label })}
+      className="px-2.5"
+    >
+      {pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+      <span className="hidden xl:inline">{pinned ? "Pinned" : "Pin"}</span>
+    </Button>
+  );
 }
 
-function PinnedLinks({ linkClass }: { linkClass: string }) {
-  const { pins, home, setHome } = usePins();
-  if (!pins.length) return <p className="px-2.5 text-[11px] text-sidebar-foreground/50">Use Pin in the top bar to add pages.</p>;
-  return <>{pins.map((pin) => <div key={pin.path} className="group flex items-center">
-    <a href={pin.path} className={cn(linkClass, "min-w-0 flex-1")}><span className="truncate">{pin.label}</span></a>
-    <button type="button" onClick={() => setHome(home === pin.path ? null : pin.path)} aria-label={home === pin.path ? `Remove ${pin.label} as home` : `Set ${pin.label} as home`} title={home === pin.path ? "Home page" : "Set as home"} className={cn("grid size-7 shrink-0 place-items-center rounded-[3px] hover:bg-sidebar-accent", home === pin.path ? "text-background" : "text-sidebar-foreground/40 opacity-0 group-hover:opacity-100 focus:opacity-100")}><Home className="size-3"/></button>
-  </div>)}</>;
+type Crumb = { label: string; href?: string };
+
+const SECTION_ROOTS: Record<string, string> = {
+  teams: "/teams",
+  competitions: "/competitions",
+  players: "/players",
+  referees: "/referees",
+  matches: "/matches",
+};
+
+function buildBreadcrumb(pathname: string, data: ShellData): Crumb[] {
+  if (pathname === "/") return [{ label: data.user.clubName }, { label: "Home" }];
+  if (pathname.startsWith("/opposition/"))
+    return [{ label: data.user.clubName, href: "/" }, { label: "Next opponent" }];
+  const parts = pathname.split("/").filter(Boolean);
+  const crumbs: Crumb[] = [];
+  let href = "";
+  parts.forEach((part, index) => {
+    href += `/${part}`;
+    const label =
+      data.names[part] ??
+      part
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    crumbs.push(index === 0 && SECTION_ROOTS[part] ? { label } : { label, href });
+  });
+  // Entity root pages are the Overview tab.
+  if (parts.length === 2 && SECTION_ROOTS[parts[0] ?? ""]) crumbs.push({ label: "Overview" });
+  return crumbs.length ? crumbs : [{ label: "Oval Hub" }];
 }
 
-function buildBreadcrumb(pathname: string) {
-  if (pathname === "/") return ["Harlequins", "Home"];
-  const parts = pathname.split("/").filter(Boolean).map((part) => part.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" "));
-  return parts.length ? parts : ["Oval Hub"];
+// ---- Legacy helpers still used by pages that have not been rebuilt yet --------------------------
+
+export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <section className={cn("rounded border border-line bg-panel", className)}>{children}</section>
+  );
 }
 
-export function PageHeading({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description: string; actions?: ReactNode }) { return <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><div className="text-xs text-muted-foreground">{eyebrow}</div><h1 className="mt-1 text-xl font-semibold">{title}</h1><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{actions && <div className="flex flex-wrap gap-2">{actions}</div>}</div>; }
-export function ContextSelect({ label, value }: { label: string; value: string }) { return <Button variant="outline"><span className="text-muted-foreground">{label}</span>{value}<ChevronRight className="size-3 rotate-90"/></Button>; }
-export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) { return <section className={cn("rounded bg-card shadow-sm ring-1 ring-border", className)}>{children}</section>; }
-export function StatusBadge({ status }: { status: "Ready" | "Processing" | "Failed" | "Live" | "Complete" }) { return <span className={cn("text-xs", status === "Processing" ? "text-highlight" : status === "Failed" ? "text-destructive" : "text-success")}>{status}</span>; }
-export function StatStrip({ stats }: { stats: Array<{ label: string; value: string; detail?: string }> }) { return <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">{stats.map((stat, index) => <div key={stat.label} className="rounded bg-card p-4 shadow-sm ring-1 ring-border"><div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{stat.label}</div><div className={cn("mt-1 truncate font-mono text-[28px] font-semibold leading-tight tracking-tight tabular-nums", (index === 1 || index === 2) && "text-primary")}>{stat.value}</div>{stat.detail && <div className="mt-1 truncate text-[10px] font-semibold uppercase text-muted-foreground">{stat.detail}</div>}</div>)}</div>; }
+export function StatStrip({
+  stats,
+}: {
+  stats: Array<{ label: string; value: string; detail?: string }>;
+}) {
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded border border-line bg-line lg:grid-cols-4">
+      {stats.map((stat) => (
+        <div key={stat.label} className="min-w-0 bg-panel px-4 py-3">
+          <div className="text-xs text-mute">{stat.label}</div>
+          <div className="mt-1 truncate text-[22px] font-semibold tabular-nums">{stat.value}</div>
+          {stat.detail && <div className="mt-0.5 truncate text-xs text-mute">{stat.detail}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Page body padding (20px 24px 32px, 16px gaps), as in the reference. */
+export function PageBody({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-4 px-4 pb-8 pt-5 md:px-6", className)}>{children}</div>
+  );
+}
