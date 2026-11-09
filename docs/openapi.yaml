@@ -1,0 +1,4631 @@
+openapi: 3.1.0
+info:
+  title: Oval Hub API
+  version: 0.1.0-draft
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+  description: Hub API (/api/v1), implemented by pulling from upstream REST APIs (the Hub stores no data), and the upstream
+    AWS Oval Insights API (paths under /oval-insights are documentation-only; the real base URL is INSIGHTS_API_URL and the
+    path starts at /v1). Only POST /api/v1/insights is built, as a temporary hold. Spec date 2026-10-08.
+servers:
+- url: /
+security:
+- bearerAuth: []
+tags:
+- name: Session, pins and search
+  description: 'Hub endpoints: session, pins and search.'
+- name: Competitions
+  description: 'Hub endpoints: competitions.'
+- name: Teams
+  description: 'Hub endpoints: teams.'
+- name: Players
+  description: 'Hub endpoints: players.'
+- name: Referees
+  description: 'Hub endpoints: referees.'
+- name: Matches and live feed
+  description: 'Hub endpoints: matches and live feed.'
+- name: Events, video and playlists
+  description: 'Hub endpoints: events, video and playlists.'
+- name: Exports, files and reports
+  description: 'Hub endpoints: exports, files and reports.'
+- name: AI insights (Hub)
+  description: 'Hub endpoints: ai insights (hub).'
+- name: Oval Insights API
+  description: Upstream AWS service, built by the AWS team. Not part of /api/v1.
+paths:
+  /api/v1/me:
+    get:
+      summary: The signed-in user, their club, role, home page and current season.
+      operationId: get_me
+      tags:
+      - Session, pins and search
+      description: 'Used by: Shell footer, Home (P1), every "my club" default (replaces hard-coded Harlequins).
+
+
+        Access: Own data only (per user).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/pins:
+    get:
+      summary: The user's pinned pages, in sidebar order.
+      operationId: get_me_pins
+      tags:
+      - Session, pins and search
+      description: 'Used by: Sidebar Pinned list.
+
+
+        Access: Own data only (per user).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pin'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      summary: Pin a page.
+      operationId: post_me_pins
+      tags:
+      - Session, pins and search
+      description: 'Used by: Top-bar Pin button.
+
+
+        Access: Own data only (per user).
+
+
+        Max 20 pins per user.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  pattern: ^/
+                label:
+                  type: string
+                  maxLength: 80
+              required:
+              - path
+              - label
+              additionalProperties: false
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '409':
+          description: Path already pinned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Path not a Hub URL or label too long
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/pins/{pinId}:
+    delete:
+      summary: Unpin a page. Clears the home page if it was this pin.
+      operationId: delete_me_pins_pinId
+      tags:
+      - Session, pins and search
+      description: 'Used by: Top-bar Pin button.
+
+
+        Access: Own data only (per user).'
+      parameters:
+      - name: pinId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Pin ID.
+      responses:
+        '204':
+          description: OK
+        '404':
+          description: No such pin for this user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/me/home:
+    put:
+      summary: Set or clear the page opened after sign-in.
+      operationId: put_me_home
+      tags:
+      - Session, pins and search
+      description: 'Used by: Pinned list "Set as home".
+
+
+        Access: Own data only (per user).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type:
+                  - string
+                  - 'null'
+              required:
+              - path
+              additionalProperties: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  homePath:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - homePath
+                additionalProperties: false
+        '422':
+          description: Path is not one of the user's pins
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/search:
+    get:
+      summary: Find competitions, teams, players, referees and matches by name.
+      operationId: get_search
+      tags:
+      - Session, pins and search
+      description: 'Used by: Global search overlay (P4).
+
+
+        Access: Any signed-in user.
+
+
+        Target p95 under 150 ms. Backed by an upstream search endpoint, or by searching the upstream entity lists (cached
+        5 min).'
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 2
+        description: Search text.
+      - name: kinds
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Comma-separated subset of competition,team,player,referee,match.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          default: 20
+        description: Max results across groups.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                        items:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/SearchResult'
+                      required:
+                      - kind
+                      - items
+                      additionalProperties: false
+                required:
+                - groups
+                additionalProperties: false
+        '422':
+          description: q shorter than 2 characters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/competitions:
+    get:
+      summary: Competitions with data for a season.
+      operationId: get_competitions
+      tags:
+      - Competitions
+      description: 'Used by: Search seed.
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Competition'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/competitions/{competitionId}:
+    get:
+      summary: Competition header and headline figures (points, tries, ball in play, with deltas).
+      operationId: get_competitions_competitionId
+      tags:
+      - Competitions
+      description: 'Used by: Competition header; Overview (P7).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: competitionId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Competition ID, e.g. gallagher-prem.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Competition'
+        '404':
+          description: Unknown competition or no data for season
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/competitions/{competitionId}/standings:
+    get:
+      summary: League table.
+      operationId: get_competitions_competitionId_standings
+      tags:
+      - Competitions
+      description: 'Used by: Home league table (P1, limit=6); Table tab (P9).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: competitionId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Competition ID, e.g. gallagher-prem.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Top N rows.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StandingRow'
+                required:
+                - items
+                additionalProperties: false
+        '404':
+          description: Unknown competition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/competitions/{competitionId}/rounds:
+    get:
+      summary: Rounds for the round selector and filters.
+      operationId: get_competitions_competitionId_rounds
+      tags:
+      - Competitions
+      description: 'Used by: Overview round selector (P7); Fixture Card and Match Centre filters (P8, P14).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: competitionId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Competition ID, e.g. gallagher-prem.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Round'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/competitions/{competitionId}/trends:
+    get:
+      summary: Competition-wide trend measures.
+      operationId: get_competitions_competitionId_trends
+      tags:
+      - Competitions
+      description: 'Used by: League performance trend (P7); Stats tab (P11).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: competitionId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Competition ID, e.g. gallagher-prem.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Trend'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/competitions/{competitionId}/team-rankings:
+    get:
+      summary: Every team ranked on one metric, against the competition average, plus the shape dials.
+      operationId: get_competitions_competitionId_team-rankings
+      tags:
+      - Competitions
+      description: 'Used by: Teams and Players tab, Teams section (P10).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: competitionId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Competition ID, e.g. gallagher-prem.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: metric
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Metric key, e.g. points_for, tackle_success.
+      - name: agg
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - total
+          - average
+        description: Default average.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metric:
+                    $ref: '#/components/schemas/Metric'
+                  competitionAverage:
+                    type:
+                    - number
+                    - 'null'
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        team:
+                          $ref: '#/components/schemas/Ref'
+                        value:
+                          type:
+                          - number
+                          - 'null'
+                      required:
+                      - team
+                      - value
+                      additionalProperties: false
+                  shape:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Metric'
+                required:
+                - metric
+                - competitionAverage
+                - items
+                - shape
+                additionalProperties: false
+        '422':
+          description: Unknown metric
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/competitions/{competitionId}/player-leaders:
+    get:
+      summary: Top players per metric.
+      operationId: get_competitions_competitionId_player-leaders
+      tags:
+      - Competitions
+      description: 'Used by: Teams and Players tab, Players top 10s (P10).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: competitionId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Competition ID, e.g. gallagher-prem.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: metric
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Metric key, or all (default).
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Restrict to one team.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 50
+          default: 10
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        metric:
+                          $ref: '#/components/schemas/Metric'
+                        leaders:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              player:
+                                $ref: '#/components/schemas/Ref'
+                              team:
+                                $ref: '#/components/schemas/Ref'
+                              value:
+                                type:
+                                - number
+                                - 'null'
+                            required:
+                            - player
+                            - team
+                            - value
+                            additionalProperties: false
+                      required:
+                      - metric
+                      - leaders
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}:
+    get:
+      summary: 'Team header: competition, position, record, coach, venue, form.'
+      operationId: get_teams_teamId
+      tags:
+      - Teams
+      description: 'Used by: Team header on every team tab.
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '404':
+          description: Unknown team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/next-fixture:
+    get:
+      summary: The team's next scheduled match and opponent.
+      operationId: get_teams_teamId_next-fixture
+      tags:
+      - Teams
+      description: 'Used by: Home Next match (P1); sidebar Next opponent; /next-opponent redirect (P2).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  match:
+                    $ref: '#/components/schemas/MatchSummary'
+                  opponent:
+                    $ref: '#/components/schemas/Ref'
+                  isHome:
+                    type: boolean
+                required:
+                - match
+                - opponent
+                - isHome
+                additionalProperties: false
+        '404':
+          description: No upcoming fixture
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/form:
+    get:
+      summary: Recent results with clip counts.
+      operationId: get_teams_teamId_form
+      tags:
+      - Teams
+      description: 'Used by: Overview Form guide and Recent results (P15).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: last
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        match:
+                          $ref: '#/components/schemas/MatchSummary'
+                        result:
+                          $ref: '#/components/schemas/ResultLetter'
+                        clipCount:
+                          type:
+                          - integer
+                          - 'null'
+                      required:
+                      - match
+                      - result
+                      - clipCount
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/season-stats:
+    get:
+      summary: Headline and performance measures, optionally with league averages.
+      operationId: get_teams_teamId_season-stats
+      tags:
+      - Teams
+      description: 'Used by: Home season strip (P1); Overview performance trend (P15); Stats tab (P21).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: competitionId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: compare
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - league
+        description: Fill leagueValue on each tile.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headline:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StatTile'
+                  performance:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StatTile'
+                required:
+                - headline
+                - performance
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/season-stats/by-competition:
+    get:
+      summary: Season figures per competition, with which export formats exist.
+      operationId: get_teams_teamId_season-stats_by-competition
+      tags:
+      - Teams
+      description: 'Used by: Head-to-head Season data by competition (P17).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        competition:
+                          $ref: '#/components/schemas/Ref'
+                        played:
+                          type: integer
+                        headline:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/StatTile'
+                        exports:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              format:
+                                type: string
+                                enum:
+                                - csv
+                                - xml
+                                - pdf
+                              available:
+                                type: boolean
+                            required:
+                            - format
+                            - available
+                            additionalProperties: false
+                      required:
+                      - competition
+                      - played
+                      - headline
+                      - exports
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/squad:
+    get:
+      summary: Squad with position groups.
+      operationId: get_teams_teamId_squad
+      tags:
+      - Teams
+      description: 'Used by: Squad roster (P18); Cohesion pitch (P19).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SquadMember'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/lineup-history:
+    get:
+      summary: Shirt numbers per player across recent matches.
+      operationId: get_teams_teamId_lineup-history
+      tags:
+      - Teams
+      description: 'Used by: Squad lineup matrix (P18).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: last
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 12
+          default: 6
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MatchSummary'
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        player:
+                          $ref: '#/components/schemas/Ref'
+                        positionGroup:
+                          type: string
+                        byMatch:
+                          type: array
+                          items:
+                            type:
+                            - integer
+                            - 'null'
+                      required:
+                      - player
+                      - positionGroup
+                      - byMatch
+                      additionalProperties: false
+                required:
+                - matches
+                - rows
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/head-to-head:
+    get:
+      summary: Comparison against another team, last meeting and key threat.
+      operationId: get_teams_teamId_head-to-head
+      tags:
+      - Teams
+      description: 'Used by: Home Next match comparison (P1); Head-to-head tab (P17).
+
+
+        Access: Any signed-in user.
+
+
+        "us" is opponentId, "them" is teamId.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: opponentId
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Usually the caller's club.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fixture:
+                    anyOf:
+                    - $ref: '#/components/schemas/MatchSummary'
+                    - type: 'null'
+                  comparison:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        label:
+                          type: string
+                        us:
+                          type:
+                          - number
+                          - 'null'
+                        them:
+                          type:
+                          - number
+                          - 'null'
+                      required:
+                      - key
+                      - label
+                      - us
+                      - them
+                      additionalProperties: false
+                  profile:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        label:
+                          type: string
+                        us:
+                          type:
+                          - number
+                          - 'null'
+                        them:
+                          type:
+                          - number
+                          - 'null'
+                      required:
+                      - key
+                      - label
+                      - us
+                      - them
+                      additionalProperties: false
+                  lastMeeting:
+                    anyOf:
+                    - type: object
+                      properties:
+                        match:
+                          $ref: '#/components/schemas/MatchSummary'
+                        videoAssetId:
+                          type:
+                          - string
+                          - 'null'
+                      required:
+                      - match
+                      - videoAssetId
+                      additionalProperties: false
+                    - type: 'null'
+                  meetings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MatchSummary'
+                  keyThreat:
+                    anyOf:
+                    - type: object
+                      properties:
+                        player:
+                          $ref: '#/components/schemas/Ref'
+                        metric:
+                          $ref: '#/components/schemas/StatTile'
+                      required:
+                      - player
+                      - metric
+                      additionalProperties: false
+                    - type: 'null'
+                required:
+                - fixture
+                - comparison
+                - profile
+                - lastMeeting
+                - meetings
+                - keyThreat
+                additionalProperties: false
+        '422':
+          description: opponentId missing or equal to teamId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/selections/{matchId}:
+    get:
+      summary: The matchday 23 for a match (draft or published).
+      operationId: get_teams_teamId_selections_matchId
+      tags:
+      - Teams
+      description: 'Used by: Cohesion (P19).
+
+
+        Access: Caller''s club only; other clubs get 404.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Selection'
+        '404':
+          description: No selection yet, or not the caller's club
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    put:
+      summary: Save the draft selection. Creates it on first save.
+      operationId: put_teams_teamId_selections_matchId
+      tags:
+      - Teams
+      description: 'Used by: Cohesion autosave (P19), debounced 1 s.
+
+
+        Access: Caller''s club only; other clubs get 404.
+
+
+        Roles: coach, analyst.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slots:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/SelectionSlot'
+                  maxItems: 23
+                version:
+                  type: integer
+                  description: Version you last read; 0 to create.
+              required:
+              - slots
+              - version
+              additionalProperties: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Selection'
+        '409':
+          description: 'Stale version: someone else saved first'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Player in two shirts, unknown player, or selection already published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/teams/{teamId}/selections/{matchId}/publish:
+    post:
+      summary: Publish the selection; it becomes read-only.
+      operationId: post_teams_teamId_selections_matchId_publish
+      tags:
+      - Teams
+      description: 'Used by: Cohesion Publish team (P19).
+
+
+        Access: Caller''s club only; other clubs get 404.
+
+
+        Role: coach.'
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Team ID, e.g. harlequins.
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: integer
+              required:
+              - version
+              additionalProperties: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Selection'
+        '403':
+          description: Not a coach
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Stale version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Fewer than 23 shirts filled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/players/{playerId}:
+    get:
+      summary: Player header.
+      operationId: get_players_playerId
+      tags:
+      - Players
+      description: 'Used by: Player header on every player tab.
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Player ID, e.g. marcus-smith.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        '404':
+          description: Unknown player
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/players/{playerId}/season-stats:
+    get:
+      summary: Headline tiles and contribution profile.
+      operationId: get_players_playerId_season-stats
+      tags:
+      - Players
+      description: 'Used by: Overview contribution (P23); Stats tiles (P26).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Player ID, e.g. marcus-smith.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: competitionId
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headline:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StatTile'
+                  contribution:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Metric'
+                required:
+                - headline
+                - contribution
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/players/{playerId}/appearances:
+    get:
+      summary: Match log.
+      operationId: get_players_playerId_appearances
+      tags:
+      - Players
+      description: 'Used by: Overview match log (P23); Stats appearance filter (P26).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Player ID, e.g. marcus-smith.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        description: Page size.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        match:
+                          $ref: '#/components/schemas/MatchSummary'
+                        started:
+                          type: boolean
+                        shirt:
+                          type:
+                          - integer
+                          - 'null'
+                        mins:
+                          type: integer
+                        headline:
+                          type:
+                          - string
+                          - 'null'
+                      required:
+                      - match
+                      - started
+                      - shirt
+                      - mins
+                      - headline
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/players/{playerId}/spatial:
+    get:
+      summary: Pitch data for one layer, for a match or the season.
+      operationId: get_players_playerId_spatial
+      tags:
+      - Players
+      description: 'Used by: Stats pitch analysis (P26).
+
+
+        Access: Any signed-in user.
+
+
+        Coordinates 0–100 on a 100 × 70 pitch, attacking left to right.'
+      parameters:
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Player ID, e.g. marcus-smith.
+      - name: layer
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - events
+          - heatmap
+          - movement
+          - territory
+          - width
+      - name: matchId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: One match; omit for season.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - type: object
+                  properties:
+                    layer:
+                      const: events
+                    points:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          x:
+                            type: number
+                          y:
+                            type: number
+                          type:
+                            type: string
+                          outcome:
+                            type:
+                            - string
+                            - 'null'
+                          eventId:
+                            type: string
+                        required:
+                        - x
+                        - y
+                        - type
+                        - outcome
+                        - eventId
+                        additionalProperties: false
+                  required:
+                  - layer
+                  - points
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    layer:
+                      const: heatmap
+                    cols:
+                      type: integer
+                    rows:
+                      type: integer
+                    grid:
+                      type: array
+                      items:
+                        type: array
+                        items:
+                          type: number
+                  required:
+                  - layer
+                  - cols
+                  - rows
+                  - grid
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    layer:
+                      const: movement
+                    paths:
+                      type: array
+                      items:
+                        type: array
+                        items:
+                          type: array
+                          items:
+                            type: number
+                  required:
+                  - layer
+                  - paths
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    layer:
+                      const: territory
+                    zones:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          zone:
+                            type: string
+                          share:
+                            type: number
+                        required:
+                        - zone
+                        - share
+                        additionalProperties: false
+                  required:
+                  - layer
+                  - zones
+                  additionalProperties: false
+                - type: object
+                  properties:
+                    layer:
+                      const: width
+                    zones:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          zone:
+                            type: string
+                          share:
+                            type: number
+                        required:
+                        - zone
+                        - share
+                        additionalProperties: false
+                  required:
+                  - layer
+                  - zones
+                  additionalProperties: false
+        '404':
+          description: No spatial data for this player or match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/referees/{refereeId}:
+    get:
+      summary: Referee header.
+      operationId: get_referees_refereeId
+      tags:
+      - Referees
+      description: 'Used by: Referee header on every referee tab.
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: refereeId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Referee ID, e.g. karl-dickson.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Referee'
+        '404':
+          description: Unknown referee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/referees/{refereeId}/season-stats:
+    get:
+      summary: Headline tiles, penalty breakdown and set-piece profile.
+      operationId: get_referees_refereeId_season-stats
+      tags:
+      - Referees
+      description: 'Used by: Overview penalty breakdown (P28); Stats (P29).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: refereeId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Referee ID, e.g. karl-dickson.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headline:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StatTile'
+                  penaltyBreakdown:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        label:
+                          type: string
+                        share:
+                          type: number
+                      required:
+                      - key
+                      - label
+                      - share
+                      additionalProperties: false
+                  setPiece:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StatTile'
+                required:
+                - headline
+                - penaltyBreakdown
+                - setPiece
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/referees/{refereeId}/appointments:
+    get:
+      summary: Matches officiated, with penalties and cards.
+      operationId: get_referees_refereeId_appointments
+      tags:
+      - Referees
+      description: 'Used by: Overview appointments (P28).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: refereeId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Referee ID, e.g. karl-dickson.
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        description: Page size.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        match:
+                          $ref: '#/components/schemas/MatchSummary'
+                        role:
+                          type: string
+                        penalties:
+                          type: object
+                          properties:
+                            home:
+                              type:
+                              - integer
+                              - 'null'
+                            away:
+                              type:
+                              - integer
+                              - 'null'
+                          required:
+                          - home
+                          - away
+                          additionalProperties: false
+                        cards:
+                          type: object
+                          properties:
+                            yellow:
+                              type: integer
+                            red:
+                              type: integer
+                          required:
+                          - yellow
+                          - red
+                          additionalProperties: false
+                      required:
+                      - match
+                      - role
+                      - penalties
+                      - cards
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches:
+    get:
+      summary: Match list filtered by competition, team, player, referee, round or status.
+      operationId: get_matches
+      tags:
+      - Matches and live feed
+      description: 'Used by: Home results (P1); every Fixture Card (P8, P16, P24, P29); Match Centre (P14); Live XML lists
+        (P13).
+
+
+        Access: Any signed-in user.
+
+
+        Sorted by kickoff, newest first.'
+      parameters:
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: competitionId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: playerId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Matches the player appeared in.
+      - name: refereeId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Matches the referee officiated.
+      - name: round
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Comma-separated MatchStatus values.
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Text over team names, venue, round.
+      - name: include
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - assets
+        description: Add asset availability per match.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        description: Page size.
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Opaque cursor from the previous page's nextCursor.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MatchSummary'
+                  nextCursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - nextCursor
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}:
+    get:
+      summary: Scoreboard header, officials and match facts.
+      operationId: get_matches_matchId
+      tags:
+      - Matches and live feed
+      description: 'Used by: Match header (P31–P35); next-fixture officials for referee prep (J8).
+
+
+        Access: Any signed-in user.
+
+
+        Old positional IDs (e.g. gallagher-prem-0) return 301 to the new ID for one season.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/MatchSummary'
+                - type: object
+                  properties:
+                    officials:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Official'
+                    halfTime:
+                      anyOf:
+                      - $ref: '#/components/schemas/Score'
+                      - type: 'null'
+                    attendance:
+                      type:
+                      - integer
+                      - 'null'
+                  required:
+                  - officials
+                  - halfTime
+                  - attendance
+        '404':
+          description: Unknown match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}/stats:
+    get:
+      summary: Team comparison in six groups.
+      operationId: get_matches_matchId_stats
+      tags:
+      - Matches and live feed
+      description: 'Used by: Overview six panels (P31); Stats tab (P34).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                          enum:
+                          - attack
+                          - possession
+                          - defence
+                          - breakdown
+                          - discipline
+                          - set_piece
+                        label:
+                          type: string
+                        rows:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              key:
+                                type: string
+                              label:
+                                type: string
+                              home:
+                                type:
+                                - number
+                                - 'null'
+                              away:
+                                type:
+                                - number
+                                - 'null'
+                              unit:
+                                type:
+                                - string
+                                - 'null'
+                            required:
+                            - key
+                            - label
+                            - home
+                            - away
+                            - unit
+                            additionalProperties: false
+                      required:
+                      - key
+                      - label
+                      - rows
+                      additionalProperties: false
+                required:
+                - groups
+                additionalProperties: false
+        '404':
+          description: Unknown match or no stats yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}/lineups:
+    get:
+      summary: Both teams' 1–23.
+      operationId: get_matches_matchId_lineups
+      tags:
+      - Matches and live feed
+      description: 'Used by: Lineups tab (P33).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  home:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LineupEntry'
+                  away:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LineupEntry'
+                required:
+                - home
+                - away
+                additionalProperties: false
+        '404':
+          description: Lineups not released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}/player-stats:
+    get:
+      summary: Per-player stats table.
+      operationId: get_matches_matchId_player-stats
+      tags:
+      - Matches and live feed
+      description: 'Used by: Player Data tab (P34).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Column key; prefix - for descending.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  columns:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        label:
+                          type: string
+                      required:
+                      - key
+                      - label
+                      additionalProperties: false
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        player:
+                          $ref: '#/components/schemas/Ref'
+                        team:
+                          $ref: '#/components/schemas/Ref'
+                        values:
+                          type: object
+                          additionalProperties:
+                            type:
+                            - number
+                            - 'null'
+                      required:
+                      - player
+                      - team
+                      - values
+                      additionalProperties: false
+                required:
+                - columns
+                - rows
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}/video:
+    get:
+      summary: Video angles for the match.
+      operationId: get_matches_matchId_video
+      tags:
+      - Matches and live feed
+      description: 'Used by: Video tab (P32); Head-to-head last meeting (P17).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        assetId:
+                          type: string
+                        angle:
+                          type: string
+                          enum:
+                          - tx
+                          - tight
+                          - wide
+                        durationSec:
+                          type:
+                          - number
+                          - 'null'
+                        ready:
+                          type: boolean
+                      required:
+                      - assetId
+                      - angle
+                      - durationSec
+                      - ready
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}/files:
+    get:
+      summary: Data files for the match.
+      operationId: get_matches_matchId_files
+      tags:
+      - Matches and live feed
+      description: 'Used by: Files & Feeds tab (P35).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fileId:
+                          type: string
+                        kind:
+                          $ref: '#/components/schemas/AssetKind'
+                        sizeBytes:
+                          type: integer
+                        generatedAt:
+                          type: string
+                          format: date-time
+                      required:
+                      - fileId
+                      - kind
+                      - sizeBytes
+                      - generatedAt
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}/reports:
+    get:
+      summary: Reports for the match.
+      operationId: get_matches_matchId_reports
+      tags:
+      - Matches and live feed
+      description: 'Used by: Reports tab (P35).
+
+
+        Access: Caller''s club only; other clubs get 404.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/matches/{matchId}/live-xml:
+    get:
+      summary: Latest live feed snapshot as XML.
+      operationId: get_matches_matchId_live-xml
+      tags:
+      - Matches and live feed
+      description: 'Used by: Live XML capture loop (P13).
+
+
+        Access: Any signed-in user.
+
+
+        Response carries ETag. Cache-Control: no-store.'
+      parameters:
+      - name: matchId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Stable match ID (UUID).
+      - name: If-None-Match
+        in: header
+        required: false
+        schema:
+          type: string
+        description: ETag of the last snapshot saved.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/xml:
+              schema:
+                type: string
+        '304':
+          description: Unchanged since If-None-Match
+        '409':
+          description: Match is not live
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: More than 1 request per 5 s per match per user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/live/matches:
+    get:
+      summary: Matches live now.
+      operationId: get_live_matches
+      tags:
+      - Matches and live feed
+      description: 'Used by: Live XML Live now list (P13).
+
+
+        Access: Any signed-in user.
+
+
+        Cache-Control: no-store.'
+      parameters:
+      - name: competitionId
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      allOf:
+                      - $ref: '#/components/schemas/MatchSummary'
+                      - type: object
+                        properties:
+                          clock:
+                            type: string
+                        required:
+                        - clock
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/events:
+    get:
+      summary: Coded events with video timecodes. Exactly one subject parameter is required.
+      operationId: get_events
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Events Video Centre (P12, P22, P27, P29); match Video timeline (P32).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: competitionId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: playerId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: refereeId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: matchId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: season
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Season key, e.g. 2025-26. Default: current season.'
+      - name: group
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Event group, e.g. Lineouts.
+      - name: last
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 20
+        description: Most recent N matches of the subject.
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Text over match, date, event.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        description: Page size.
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Opaque cursor from the previous page's nextCursor.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                  nextCursor:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - items
+                - nextCursor
+                additionalProperties: false
+        '422':
+          description: Zero or more than one subject parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/events/groups:
+    get:
+      summary: Event group names for a subject kind.
+      operationId: get_events_groups
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Video Centre group filter; Clips cards.
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: subjectKind
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - competition
+          - team
+          - player
+          - referee
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/events/summary:
+    get:
+      summary: Event counts per group for several match windows.
+      operationId: get_events_summary
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Clips tabs (P20, P25, P29).
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: playerId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: refereeId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: competitionId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: windows
+        in: query
+        required: true
+        schema:
+          type: string
+        description: Comma-separated, e.g. 1,4,6.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        group:
+                          type: string
+                        counts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              window:
+                                type: integer
+                              count:
+                                type: integer
+                            required:
+                            - window
+                            - count
+                            additionalProperties: false
+                      required:
+                      - group
+                      - counts
+                      additionalProperties: false
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/video/{assetId}/playback:
+    get:
+      summary: Signed HLS URL for a video asset, optionally trimmed.
+      operationId: get_video_assetId_playback
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Video Centre player; match Video tab; Head-to-head last meeting.
+
+
+        Access: Any signed-in user.
+
+
+        URL valid 15 minutes. Video rights are checked per competition.'
+      parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Video asset ID.
+      - name: start
+        in: query
+        required: false
+        schema:
+          type: number
+        description: Seconds.
+      - name: end
+        in: query
+        required: false
+        schema:
+          type: number
+        description: Seconds.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hlsUrl:
+                    type: string
+                  posterUrl:
+                    type:
+                    - string
+                    - 'null'
+                  expiresAt:
+                    type: string
+                    format: date-time
+                required:
+                - hlsUrl
+                - posterUrl
+                - expiresAt
+                additionalProperties: false
+        '404':
+          description: Unknown asset or not yet processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/playlists:
+    get:
+      summary: The user's playlists.
+      operationId: get_playlists
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Video Centre Add to playlist.
+
+
+        Access: Own data only (per user).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Playlist'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    post:
+      summary: Create a playlist.
+      operationId: post_playlists
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Video Centre Add to playlist.
+
+
+        Access: Own data only (per user).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+              required:
+              - name
+              additionalProperties: false
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/playlists/{playlistId}/items:
+    post:
+      summary: Add events to a playlist (duplicates ignored).
+      operationId: post_playlists_playlistId_items
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Video Centre Add to playlist.
+
+
+        Access: Own data only (per user).'
+      parameters:
+      - name: playlistId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Playlist ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                eventIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 200
+              required:
+              - eventIds
+              additionalProperties: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '404':
+          description: Unknown playlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/playlists/{playlistId}/items/{eventId}:
+    delete:
+      summary: Remove an event from a playlist.
+      operationId: delete_playlists_playlistId_items_eventId
+      tags:
+      - Events, video and playlists
+      description: 'Used by: Video Centre playlist.
+
+
+        Access: Own data only (per user).'
+      parameters:
+      - name: playlistId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Playlist ID.
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Event ID.
+      responses:
+        '204':
+          description: OK
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/exports:
+    post:
+      summary: Queue an export job (video, data files, packs, reports).
+      operationId: post_exports
+      tags:
+      - Exports, files and reports
+      description: 'Used by: Every download button except single ready files.
+
+
+        Access: Own data only (per user).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '202':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '422':
+          description: Bad request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: More than 10 active jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    get:
+      summary: The user's export jobs, newest first.
+      operationId: get_exports
+      tags:
+      - Exports, files and reports
+      description: 'Used by: Download tray.
+
+
+        Access: Own data only (per user).'
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Comma-separated job statuses.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        description: Page size.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExportJob'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/exports/{exportId}:
+    get:
+      summary: One export job (poll every 5 s until ready or failed).
+      operationId: get_exports_exportId
+      tags:
+      - Exports, files and reports
+      description: 'Used by: Download tray polling.
+
+
+        Access: Own data only (per user).'
+      parameters:
+      - name: exportId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Export job ID.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '404':
+          description: Unknown job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    delete:
+      summary: Cancel or remove a job.
+      operationId: delete_exports_exportId
+      tags:
+      - Exports, files and reports
+      description: 'Used by: Download tray.
+
+
+        Access: Own data only (per user).'
+      parameters:
+      - name: exportId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Export job ID.
+      responses:
+        '204':
+          description: OK
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/exports/{exportId}/retry:
+    post:
+      summary: Retry a failed job.
+      operationId: post_exports_exportId_retry
+      tags:
+      - Exports, files and reports
+      description: 'Used by: Download tray.
+
+
+        Access: Own data only (per user).'
+      parameters:
+      - name: exportId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Export job ID.
+      responses:
+        '202':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '409':
+          description: Job is not failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/files/{fileId}/download:
+    get:
+      summary: Redirect to a signed download URL.
+      operationId: get_files_fileId_download
+      tags:
+      - Exports, files and reports
+      description: 'Used by: Fixture Card cells; Files & Feeds (P35); reports.
+
+
+        Access: Any signed-in user.'
+      parameters:
+      - name: fileId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: File ID.
+      responses:
+        '302':
+          description: 'Location: signed URL, valid 15 minutes'
+          headers:
+            Location:
+              schema:
+                type: string
+        '404':
+          description: Unknown or expired file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/reports:
+    get:
+      summary: Reports for a team or match.
+      operationId: get_reports
+      tags:
+      - Exports, files and reports
+      description: 'Used by: Home Recent reports (P1); Reports tab (P35).
+
+
+        Access: Caller''s club only; other clubs get 404.'
+      parameters:
+      - name: teamId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: matchId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        description: Page size.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+                required:
+                - items
+                additionalProperties: false
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /api/v1/insights:
+    post:
+      summary: Batch read of AI insights for Overview tabs. Forwards each item to the AWS Oval Insights API.
+      operationId: post_insights
+      tags:
+      - AI insights (Hub)
+      description: 'Used by: AI summaries on Overview tabs (P7, P15, P23, P28).
+
+
+        Access: Any signed-in user.
+
+
+        BUILT as a temporary hold (app/api/v1/insights/route.ts). Without INSIGHTS_API_URL every item returns status "placeholder".
+        Never fails the batch: per-item status ready | pending | unavailable | placeholder.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/InsightRequestItem'
+                  minItems: 1
+                  maxItems: 6
+              required:
+              - items
+              additionalProperties: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InsightResult'
+                  source:
+                    type: string
+                    enum:
+                    - oval-insights-api
+                    - placeholder
+                required:
+                - items
+                - source
+                additionalProperties: false
+        '422':
+          description: Bad item, e.g. malformed subject
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: No or expired session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /oval-insights/v1/insights:
+    get:
+      summary: Read one stored AI insight.
+      operationId: get_v1_insights
+      tags:
+      - Oval Insights API
+      parameters:
+      - name: subject
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(competition|team|player|referee):[A-Za-z0-9._-]{1,100}$
+          examples:
+          - team:harlequins
+        description: kind:id, e.g. team:harlequins.
+      - name: scope
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - round
+          - match
+          - form
+      - name: matchId
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Required when scope=match.
+      - name: round
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Required when scope=round, e.g. Round 18.
+      - name: window
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Required when scope=form, e.g. last-5.
+      - name: season
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: perspective
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - neutral
+          - team
+          - player
+          - referee
+      - name: sentences
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - 2-3
+          - 3-4
+          - 3-5
+        description: Preferred length; the service may ignore it for stored text.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OvalInsight'
+        '400':
+          description: Missing or inconsistent parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Missing or wrong x-api-key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: No insight generated yet for this key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Throttled by API Gateway
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      servers:
+      - url: https://{insightsHost}
+        variables:
+          insightsHost:
+            default: insights.example.com
+      security:
+      - insightsApiKey: []
+      x-oval-owner: AWS team (Oval Insights API). Called only by the Hub server, never the browser.
+  /oval-insights/v1/health:
+    get:
+      summary: Liveness and current model version.
+      operationId: get_v1_health
+      tags:
+      - Oval Insights API
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - ok
+                    - degraded
+                  modelVersion:
+                    type:
+                    - string
+                    - 'null'
+                required:
+                - status
+                - modelVersion
+                additionalProperties: false
+      servers:
+      - url: https://{insightsHost}
+        variables:
+          insightsHost:
+            default: insights.example.com
+      security:
+      - insightsApiKey: []
+      x-oval-owner: AWS team (Oval Insights API). Called only by the Hub server, never the browser.
+components:
+  schemas:
+    Ref:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+      additionalProperties: false
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+              - unauthenticated
+              - forbidden
+              - not_found
+              - validation_failed
+              - conflict
+              - rate_limited
+              - upstream_unavailable
+              - internal
+            message:
+              type: string
+            details:
+              type: object
+          required:
+          - code
+          - message
+          additionalProperties: false
+      required:
+      - error
+      additionalProperties: false
+    ResultLetter:
+      type: string
+      enum:
+      - W
+      - D
+      - L
+    MatchStatus:
+      type: string
+      enum:
+      - scheduled
+      - live
+      - completed
+      - finalised
+      - postponed
+      - cancelled
+    AssetKind:
+      type: string
+      enum:
+      - tx
+      - tight
+      - wide
+      - report_csv
+      - report_pdf
+      - team_xml
+      - events_xml
+      - events_csv
+      - events_json
+    Score:
+      type: object
+      properties:
+        home:
+          type: integer
+        away:
+          type: integer
+      required:
+      - home
+      - away
+      additionalProperties: false
+    StatTile:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type:
+          - number
+          - 'null'
+        unit:
+          type:
+          - string
+          - 'null'
+        display:
+          type:
+          - string
+          - 'null'
+        detail:
+          type:
+          - string
+          - 'null'
+        leagueValue:
+          type:
+          - number
+          - 'null'
+      required:
+      - key
+      - label
+      - value
+      - display
+      additionalProperties: false
+    Metric:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type:
+          - number
+          - 'null'
+        unit:
+          type:
+          - string
+          - 'null'
+      required:
+      - key
+      - label
+      - value
+      additionalProperties: false
+    AssetRef:
+      type: object
+      properties:
+        fileId:
+          type: string
+        sizeBytes:
+          type: integer
+      required:
+      - fileId
+      - sizeBytes
+      additionalProperties: false
+    MatchSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        competition:
+          $ref: '#/components/schemas/Ref'
+        season:
+          type: string
+        round:
+          type:
+          - string
+          - 'null'
+        kickoff:
+          type: string
+          format: date-time
+        venue:
+          type:
+          - string
+          - 'null'
+        status:
+          $ref: '#/components/schemas/MatchStatus'
+        home:
+          $ref: '#/components/schemas/Ref'
+        away:
+          $ref: '#/components/schemas/Ref'
+        score:
+          anyOf:
+          - $ref: '#/components/schemas/Score'
+          - type: 'null'
+        assets:
+          type: object
+          description: Only with include=assets. Key = AssetKind; null = not available.
+          additionalProperties:
+            anyOf:
+            - $ref: '#/components/schemas/AssetRef'
+            - type: 'null'
+      required:
+      - id
+      - competition
+      - season
+      - round
+      - kickoff
+      - venue
+      - status
+      - home
+      - away
+      - score
+      additionalProperties: false
+    Me:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          additionalProperties: false
+        role:
+          type: string
+          enum:
+          - analyst
+          - coach
+          - broadcaster
+          - media
+          - admin
+        club:
+          anyOf:
+          - $ref: '#/components/schemas/Ref'
+          - type: 'null'
+        homePath:
+          type:
+          - string
+          - 'null'
+        currentSeason:
+          type: string
+      required:
+      - user
+      - role
+      - club
+      - homePath
+      - currentSeason
+      additionalProperties: false
+    Pin:
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        label:
+          type: string
+        order:
+          type: integer
+      required:
+      - id
+      - path
+      - label
+      - order
+      additionalProperties: false
+    SearchResult:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum:
+          - competition
+          - team
+          - player
+          - referee
+          - match
+        name:
+          type: string
+        detail:
+          type:
+          - string
+          - 'null'
+        meta:
+          type:
+          - string
+          - 'null'
+        path:
+          type: string
+      required:
+      - id
+      - kind
+      - name
+      - detail
+      - meta
+      - path
+      additionalProperties: false
+    Competition:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        season:
+          type: string
+        stage:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - upcoming
+          - in_progress
+          - complete
+        matches:
+          type: integer
+        rounds:
+          type: integer
+        headline:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatTile'
+      required:
+      - id
+      - name
+      - season
+      - stage
+      - status
+      - matches
+      - rounds
+      - headline
+      additionalProperties: false
+    StandingRow:
+      type: object
+      properties:
+        position:
+          type: integer
+        team:
+          $ref: '#/components/schemas/Ref'
+        p:
+          type: integer
+        w:
+          type: integer
+        d:
+          type: integer
+        l:
+          type: integer
+        pf:
+          type: integer
+        pa:
+          type: integer
+        bonus:
+          type: integer
+        pts:
+          type: integer
+      required:
+      - position
+      - team
+      - p
+      - w
+      - d
+      - l
+      - pf
+      - pa
+      - bonus
+      - pts
+      additionalProperties: false
+    Round:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+          enum:
+          - upcoming
+          - in_progress
+          - complete
+      required:
+      - key
+      - label
+      - status
+      additionalProperties: false
+    Trend:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type:
+          - number
+          - 'null'
+        display:
+          type:
+          - string
+          - 'null'
+        percentile:
+          type:
+          - number
+          - 'null'
+      required:
+      - key
+      - label
+      - value
+      - display
+      - percentile
+      additionalProperties: false
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        competition:
+          $ref: '#/components/schemas/Ref'
+        position:
+          type:
+          - integer
+          - 'null'
+        record:
+          type: object
+          properties:
+            w:
+              type: integer
+            d:
+              type: integer
+            l:
+              type: integer
+          required:
+          - w
+          - d
+          - l
+          additionalProperties: false
+        venue:
+          type:
+          - string
+          - 'null'
+        coach:
+          type:
+          - string
+          - 'null'
+        form:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultLetter'
+      required:
+      - id
+      - name
+      - competition
+      - position
+      - record
+      - venue
+      - coach
+      - form
+      additionalProperties: false
+    SquadMember:
+      type: object
+      properties:
+        player:
+          $ref: '#/components/schemas/Ref'
+        number:
+          type:
+          - integer
+          - 'null'
+        position:
+          type:
+          - string
+          - 'null'
+        positionGroup:
+          type: string
+          enum:
+          - props
+          - hookers
+          - locks
+          - back_row
+          - half_backs
+          - centres
+          - back_three
+        apps:
+          type: integer
+        mins:
+          type: integer
+      required:
+      - player
+      - number
+      - position
+      - positionGroup
+      - apps
+      - mins
+      additionalProperties: false
+    SelectionSlot:
+      type: object
+      properties:
+        number:
+          type: integer
+          minimum: 1
+          maximum: 23
+        playerId:
+          type:
+          - string
+          - 'null'
+      required:
+      - number
+      - playerId
+      additionalProperties: false
+    Selection:
+      type: object
+      properties:
+        matchId:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - published
+        version:
+          type: integer
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectionSlot'
+        updatedBy:
+          $ref: '#/components/schemas/Ref'
+        updatedAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - matchId
+      - status
+      - version
+      - slots
+      - updatedBy
+      - updatedAt
+      - publishedAt
+      additionalProperties: false
+    Player:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        initials:
+          type: string
+        team:
+          $ref: '#/components/schemas/Ref'
+        position:
+          type:
+          - string
+          - 'null'
+        age:
+          type:
+          - integer
+          - 'null'
+        heightM:
+          type:
+          - number
+          - 'null'
+        apps:
+          type: integer
+        mins:
+          type: integer
+      required:
+      - id
+      - name
+      - initials
+      - team
+      - position
+      - age
+      - heightM
+      - apps
+      - mins
+      additionalProperties: false
+    Referee:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        panel:
+          type:
+          - string
+          - 'null'
+        union:
+          type:
+          - string
+          - 'null'
+        matches:
+          type: integer
+      required:
+      - id
+      - name
+      - panel
+      - union
+      - matches
+      additionalProperties: false
+    Official:
+      type: object
+      properties:
+        referee:
+          $ref: '#/components/schemas/Ref'
+        role:
+          type: string
+          enum:
+          - referee
+          - assistant_1
+          - assistant_2
+          - tmo
+      required:
+      - referee
+      - role
+      additionalProperties: false
+    LineupEntry:
+      type: object
+      properties:
+        shirt:
+          type: integer
+        player:
+          $ref: '#/components/schemas/Ref'
+        position:
+          type:
+          - string
+          - 'null'
+        captain:
+          type: boolean
+        minsPlayed:
+          type:
+          - integer
+          - 'null'
+      required:
+      - shirt
+      - player
+      - position
+      - captain
+      - minsPlayed
+      additionalProperties: false
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        group:
+          type: string
+        type:
+          type: string
+        outcome:
+          type:
+          - string
+          - 'null'
+        match:
+          $ref: '#/components/schemas/MatchSummary'
+        team:
+          $ref: '#/components/schemas/Ref'
+        player:
+          anyOf:
+          - $ref: '#/components/schemas/Ref'
+          - type: 'null'
+        clock:
+          type: string
+        period:
+          type: integer
+        x:
+          type:
+          - number
+          - 'null'
+        y:
+          type:
+          - number
+          - 'null'
+        videoAssetId:
+          type:
+          - string
+          - 'null'
+        startSec:
+          type:
+          - number
+          - 'null'
+        endSec:
+          type:
+          - number
+          - 'null'
+      required:
+      - id
+      - group
+      - type
+      - outcome
+      - match
+      - team
+      - player
+      - clock
+      - period
+      - x
+      - y
+      - videoAssetId
+      - startSec
+      - endSec
+      additionalProperties: false
+    Playlist:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        itemCount:
+          type: integer
+        eventIds:
+          type: array
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - name
+      - itemCount
+      - eventIds
+      - updatedAt
+      additionalProperties: false
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+        owner:
+          $ref: '#/components/schemas/Ref'
+        formats:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum:
+          - ready
+          - processing
+          - failed
+        fileIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - title
+      - type
+      - owner
+      - formats
+      - status
+      - fileIds
+      - createdAt
+      additionalProperties: false
+    ExportRequest:
+      oneOf:
+      - type: object
+        properties:
+          type:
+            const: match-pack
+          matchId:
+            type: string
+        required:
+        - type
+        - matchId
+        additionalProperties: false
+      - type: object
+        properties:
+          type:
+            const: fixture-assets
+          matchIds:
+            type: array
+            items:
+              type: string
+            minItems: 1
+            maxItems: 50
+          assetKinds:
+            type: array
+            items:
+              $ref: '#/components/schemas/AssetKind'
+            minItems: 1
+        required:
+        - type
+        - matchIds
+        - assetKinds
+        additionalProperties: false
+      - type: object
+        properties:
+          type:
+            const: video
+          matchId:
+            type: string
+          angle:
+            type: string
+            enum:
+            - tx
+            - tight
+            - wide
+        required:
+        - type
+        - matchId
+        - angle
+        additionalProperties: false
+      - type: object
+        properties:
+          type:
+            const: clip-reel
+          playlistId:
+            type: string
+          eventIds:
+            type: array
+            items:
+              type: string
+          format:
+            type: string
+            enum:
+            - mp4
+        required:
+        - type
+        - format
+        additionalProperties: false
+      - type: object
+        properties:
+          type:
+            const: season-data
+          teamId:
+            type: string
+          competitionIds:
+            type: array
+            items:
+              type: string
+          formats:
+            type: array
+            items:
+              type: string
+              enum:
+              - csv
+              - xml
+              - pdf
+        required:
+        - type
+        - teamId
+        - competitionIds
+        - formats
+        additionalProperties: false
+      - type: object
+        properties:
+          type:
+            const: season-report
+          subject:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum:
+                - team
+                - player
+                - referee
+              id:
+                type: string
+            required:
+            - kind
+            - id
+            additionalProperties: false
+          season:
+            type: string
+        required:
+        - type
+        - subject
+        - season
+        additionalProperties: false
+      description: Pick by the `type` field.
+    ExportJob:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+          - match-pack
+          - fixture-assets
+          - video
+          - clip-reel
+          - season-data
+          - season-report
+        label:
+          type: string
+        status:
+          type: string
+          enum:
+          - queued
+          - processing
+          - ready
+          - failed
+          - expired
+        progress:
+          type:
+          - number
+          - 'null'
+        sizeBytes:
+          type:
+          - integer
+          - 'null'
+        format:
+          type: string
+        downloadUrl:
+          type:
+          - string
+          - 'null'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        error:
+          type:
+          - string
+          - 'null'
+      required:
+      - id
+      - type
+      - label
+      - status
+      - progress
+      - sizeBytes
+      - format
+      - downloadUrl
+      - createdAt
+      - expiresAt
+      - error
+      additionalProperties: false
+    InsightRequestItem:
+      type: object
+      properties:
+        cacheKey:
+          type: string
+        scope:
+          type: string
+          enum:
+          - round
+          - match
+          - form
+        subject:
+          type: string
+          pattern: ^(competition|team|player|referee):[A-Za-z0-9._-]{1,100}$
+          examples:
+          - team:harlequins
+        matchId:
+          type: string
+        round:
+          type: string
+        window:
+          type: string
+        season:
+          type: string
+        perspective:
+          type: string
+          enum:
+          - neutral
+          - team
+          - player
+          - referee
+        sentenceLimit:
+          type: string
+          enum:
+          - 2-3
+          - 3-4
+          - 3-5
+      required:
+      - cacheKey
+      - scope
+      - subject
+      - season
+      - perspective
+      - sentenceLimit
+      additionalProperties: false
+    InsightResult:
+      type: object
+      properties:
+        cacheKey:
+          type: string
+        status:
+          type: string
+          enum:
+          - ready
+          - pending
+          - unavailable
+          - placeholder
+        summary:
+          type:
+          - string
+          - 'null'
+        placeholder:
+          type: boolean
+        generatedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        modelVersion:
+          type:
+          - string
+          - 'null'
+        error:
+          type: string
+      required:
+      - cacheKey
+      - status
+      - summary
+      - placeholder
+      - generatedAt
+      - modelVersion
+      additionalProperties: false
+    OvalInsight:
+      type: object
+      properties:
+        subject:
+          type: string
+        scope:
+          type: string
+          enum:
+          - round
+          - match
+          - form
+        matchId:
+          type:
+          - string
+          - 'null'
+        round:
+          type:
+          - string
+          - 'null'
+        window:
+          type:
+          - string
+          - 'null'
+        season:
+          type: string
+        perspective:
+          type: string
+          enum:
+          - neutral
+          - team
+          - player
+          - referee
+        status:
+          type: string
+          enum:
+          - ready
+          - pending
+        summary:
+          type:
+          - string
+          - 'null'
+        generatedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        modelVersion:
+          type:
+          - string
+          - 'null'
+        inputHash:
+          type:
+          - string
+          - 'null'
+      required:
+      - subject
+      - scope
+      - matchId
+      - round
+      - window
+      - season
+      - perspective
+      - status
+      - summary
+      - generatedAt
+      - modelVersion
+      - inputHash
+      additionalProperties: false
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Session token from sign-in (proposed: AWS Cognito).'
+    insightsApiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API Gateway key held by the Hub server (INSIGHTS_API_KEY).
