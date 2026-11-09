@@ -5,7 +5,10 @@
 //   aws      — {gateway}/…              (list-files, presign, user, competitions)
 // alleventsearch is the exception: v2 built a direct RugbyViz URL and handed it to Xeatre.
 //
-// Responses are the upstream payloads. Reshaping them onto docs/openapi.yaml is separate.
+// Responses are the upstream payloads unless src/server/contract/reshape.ts has a reshaper for the
+// route's operationId, in which case the route answers with the docs/openapi.yaml body.
+
+import { operationIdFor, reshaperFor } from "@/server/contract/reshape";
 
 export type UpstreamChannel = "rugbyviz" | "rugbyviz-direct" | "aws" | "xeatre";
 
@@ -43,7 +46,7 @@ type GapDef = {
 export type RouteDef = RoutedDef | GapDef;
 
 export type RouteResolution =
-  | { kind: "calls"; hub: string; spec: boolean; calls: UpstreamCall[]; note?: string }
+  | { kind: "calls"; hub: string; pattern: string; params: Params; spec: boolean; calls: UpstreamCall[]; note?: string }
   | { kind: "gap"; hub: string; spec: boolean; message: string }
   | { kind: "invalid"; message: string };
 
@@ -566,7 +569,7 @@ const gap = (pattern: string, message: string, spec = true): GapDef => ({
 export const hubRoutes: RouteDef[] = [
   { method: "GET", pattern: "me", status: "routed", spec: true, upstream: ["aws get-user?username="], build: (_params, query) => me(query) },
   gap("me/pins", "Pins live in the v2 browser (localStorage). There is no pins API to route."),
-  gap("me/home", "The v2 home page is not stored on an API. user-settings is preference JSON, not a home path."),
+  gap("me/home", "The v2 home page is not stored on an API. user-settings is preference JSON, not a home path. The spec only has PUT /me/home; the home page is read from GET /me.", false),
   { method: "GET", pattern: "search", status: "routed", spec: true, upstream: ["rugbyviz search", "rugbyviz returnteams", "rugbyviz returnofficials"], build: (_p, query) => search(query) },
   { method: "GET", pattern: "competitions", status: "routed", spec: true, upstream: ["aws list-competitions", "aws get-users-competitions"], build: (_p, query) => competitions(query) },
   { method: "GET", pattern: "competitions/:competitionId/standings", status: "routed", spec: true, upstream: ["rugbyviz competitionstandings/{compId}", "rugbyviz standing/search"], build: standings },
@@ -626,15 +629,23 @@ export const notRoutedInV2 = [
 ] as const;
 
 export function listHubRoutes() {
+  const items = hubRoutes.map((route) => ({
+    method: route.method,
+    path: `/api/v1/${route.pattern}`,
+    ...(route.spec ? { operationId: operationIdFor(route.pattern) } : {}),
+    spec: route.spec,
+    status: route.status,
+    contract: route.status === "routed" && reshaperFor(route.pattern) ? "openapi" : route.status === "routed" ? "upstream-passthrough" : "none",
+    upstream: route.upstream,
+    ...(route.status === "no-v2-source" ? { gap: route.gap } : {}),
+  }));
+  const toMap = items.filter((item) => item.spec && item.status === "routed");
   return {
-    items: hubRoutes.map((route) => ({
-        method: route.method,
-        path: `/api/v1/${route.pattern}`,
-        spec: route.spec,
-        status: route.status,
-        upstream: route.upstream,
-        ...(route.status === "no-v2-source" ? { gap: route.gap } : {}),
-      })),
+    progress: {
+      routedSpecEndpoints: toMap.length,
+      reshaped: toMap.filter((item) => item.contract === "openapi").length,
+    },
+    items,
     notRouted: notRoutedInV2,
   };
 }
@@ -648,9 +659,8 @@ export function resolveHubRoute(method: string, segments: string[], query: URLSe
     if (route.status === "no-v2-source") return { kind: "gap", hub, spec: route.spec, message: route.gap };
     const built = route.build(params, query);
     if ("error" in built) return { kind: "invalid", message: built.error };
-    return built.note === undefined
-      ? { kind: "calls", hub, spec: route.spec, calls: built.calls }
-      : { kind: "calls", hub, spec: route.spec, calls: built.calls, note: built.note };
+    const base = { kind: "calls" as const, hub, pattern: route.pattern, params, spec: route.spec, calls: built.calls };
+    return built.note === undefined ? base : { ...base, note: built.note };
   }
   return null;
 }
