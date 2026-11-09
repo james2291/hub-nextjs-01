@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Providers } from "@/app-providers";
 import { AppShell } from "@/components/oval/app-shell";
 import { getShellData } from "@/server/shell";
+import { readPins } from "@/server/user-pins";
 import "@/styles.css";
 
 // IBM Plex from the design handoff (OFL, app/fonts/OFL.txt), self-hosted.
@@ -45,12 +46,12 @@ export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body>
         <Providers>
-          <AppShell data={getShellData()}>{children}</AppShell>
+          <AppShell data={{ ...getShellData(), ...(await readPins()) }}>{children}</AppShell>
         </Providers>
       </body>
     </html>

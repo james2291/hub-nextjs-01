@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { BreadcrumbLabel } from "@/components/oval/app-shell";
 import { MatchHeader } from "@/components/oval/match/header";
 import { hubNow } from "@/lib/now";
 import { scoreLine } from "@/lib/rugby";
@@ -28,6 +29,10 @@ export default async function MatchLayout({
   if (!fixture) notFound();
   return (
     <>
+      <BreadcrumbLabel
+        segment={String(fixture.id)}
+        label={`${fixture.home.club.name} v ${fixture.away.club.name}`}
+      />
       <MatchHeader fixture={fixture} now={hubNow().toISOString()} />
       {children}
     </>

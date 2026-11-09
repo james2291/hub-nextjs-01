@@ -8,6 +8,7 @@ import NextLink from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ComingSoonButton } from "@/components/oval/coming-soon";
 import { DataNote } from "@/components/oval/primitives";
 import { Button } from "@/components/ui/button";
 import type { AiInsightResult } from "@/lib/ai-insights";
@@ -78,9 +79,10 @@ export function MatchVideo({ fixture, season }: { fixture: Fixture; season: stri
             </span>
             <button
               type="button"
-              aria-label="Play"
-              onClick={() => toast("Video playback needs the clip feed.")}
-              className="grid size-[68px] place-items-center rounded-full bg-white"
+              aria-label="Play. Coming soon: needs the clip feed."
+              aria-disabled="true"
+              title="Coming soon: needs the clip feed"
+              className="grid size-[68px] cursor-not-allowed place-items-center rounded-full bg-white opacity-70"
             >
               <Play className="ml-1 size-6 fill-ink text-ink" />
             </button>
@@ -114,16 +116,10 @@ export function MatchVideo({ fixture, season }: { fixture: Fixture; season: stri
             <span className="text-[15px] font-semibold tabular-nums">
               {moment?.minute}:08 <span className="font-normal text-faint">/ 80:00</span>
             </span>
-            <Button
-              variant="dark"
-              className="ml-auto"
-              onClick={() => toast("Clips need the clip feed.")}
-            >
+            <ComingSoonButton variant="dark" needs="the clip feed" className="ml-auto">
               Clip {moment?.minute}:08–{moment?.minute}:20
-            </Button>
-            <Button variant="outline" onClick={() => toast("Playlists aren't connected yet.")}>
-              Add to playlist
-            </Button>
+            </ComingSoonButton>
+            <ComingSoonButton needs="the playlists API">Add to playlist</ComingSoonButton>
           </div>
         </section>
 

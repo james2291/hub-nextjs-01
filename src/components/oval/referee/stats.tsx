@@ -114,10 +114,7 @@ export function RefereeStats({ slug }: { slug: string }) {
       </div>
       <Section title="Discipline" meta="Season averages">
         <div className="px-4 pb-2">
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute">
             <span />
             <span>{me}</span>
             <span>{them}</span>

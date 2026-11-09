@@ -6,7 +6,6 @@ import { CornerDownLeft, Search, Trophy, UserRound, Users, X } from "lucide-reac
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 
-import { useShell } from "@/components/oval/app-shell";
 import { cn } from "@/lib/utils";
 import type { SearchItem, SearchType } from "@/server/search";
 
@@ -30,15 +29,52 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
   return <SearchDialog onClose={onClose} />;
 }
 
+// The index is fetched the first time Search opens, then kept for the session.
+let indexPromise: Promise<SearchItem[]> | null = null;
+
+function loadIndex(): Promise<SearchItem[]> {
+  indexPromise ??= fetch("/api/hub/search-index")
+    .then((response) =>
+      response.ok ? (response.json() as Promise<{ items: SearchItem[] }>) : { items: [] },
+    )
+    .then((body) => body.items)
+    .catch(() => {
+      indexPromise = null;
+      return [];
+    });
+  return indexPromise;
+}
+
+function useSearchIndex(): SearchItem[] | null {
+  const [items, setItems] = useState<SearchItem[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadIndex().then((loaded) => {
+      if (live) setItems(loaded);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return items;
+}
+
 function SearchDialog({ onClose }: { onClose: () => void }) {
-  const { search: index } = useShell();
+  const index = useSearchIndex();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<SearchType | "all">("all");
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Return focus to whatever opened the dialog (the search box or ⌘K's target) when it closes.
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => opener?.focus();
+  }, []);
+
   const matches = useMemo(() => {
+    if (!index) return [];
     const q = query.trim().toLowerCase();
     const found = q
       ? index.filter((item) => `${item.name} ${item.detail}`.toLowerCase().includes(q))
@@ -156,8 +192,15 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
           <span className="ml-auto text-[10px] font-medium text-faint">Tab to switch</span>
         </div>
         <div ref={listRef} className="flex-1 overflow-y-auto px-2 pb-2.5 pt-1.5">
-          {results.length === 0 && (
-            <div className="px-2 py-8 text-center text-mute">No results for “{query}”.</div>
+          {index === null && (
+            <div role="status" className="px-2 py-8 text-center text-mute">
+              Loading search…
+            </div>
+          )}
+          {index !== null && results.length === 0 && (
+            <div className="px-2 py-8 text-center text-mute">
+              {query ? `No results for “${query}”.` : "Search isn't available right now."}
+            </div>
           )}
           {results.map((item, position) => {
             const heading =

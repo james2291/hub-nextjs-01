@@ -2,7 +2,15 @@
 // and 8.2): data-note strip, crests, club colour bars, KPI strips, joined panels and table rows.
 // Server-safe: no hooks, so server and client components can both use them.
 import NextLink from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  cloneElement,
+  isValidElement,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 import type { ClubRef, ResultLetter } from "@/lib/rugby";
 import { cn } from "@/lib/utils";
@@ -181,10 +189,15 @@ export function ResultMark({
 /** W/L letters in mono, newest on the right. */
 export function FormLetters({ results }: { results: ResultLetter[] }) {
   return (
-    <span className="inline-flex gap-[3px] font-mono text-[11px] font-medium">
+    <span
+      role="img"
+      aria-label={`Last ${results.length}, oldest first: ${results.map((result) => (result === "W" ? "won" : result === "L" ? "lost" : "drawn")).join(", ")}`}
+      className="inline-flex gap-[3px] font-mono text-[11px] font-medium"
+    >
       {results.map((result, index) => (
         <span
           key={index}
+          aria-hidden="true"
           className={result === "W" ? "text-win" : result === "L" ? "text-loss" : "text-mute"}
         >
           {result}
@@ -205,13 +218,16 @@ export type Kpi = {
 export function KpiStrip({ items, className }: { items: Kpi[]; className?: string }) {
   return (
     <div
-      className={cn("grid gap-px overflow-hidden rounded border border-line bg-line", className)}
-      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      className={cn(
+        "grid grid-cols-2 gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-3 lg:[grid-template-columns:repeat(var(--kpi-cols),minmax(0,1fr))]",
+        className,
+      )}
+      style={{ "--kpi-cols": items.length } as CSSProperties}
     >
       {items.map((item) => (
         <div key={item.label} className="min-w-0 bg-panel px-4 py-3">
           <div className="text-xs text-mute">{item.label}</div>
-          <div className="mt-1 truncate text-[22px] font-semibold tracking-[-0.01em] tabular-nums">
+          <div className="mt-1 text-lg font-semibold leading-tight tracking-[-0.01em] tabular-nums sm:text-[22px] lg:truncate">
             {item.value}
           </div>
           {item.detail !== undefined && (
@@ -244,17 +260,23 @@ export function PanelGrid({ children, className }: { children: ReactNode; classN
   );
 }
 
-/** A panel. Inside a PanelGrid pass `span`; on its own it draws its own border. */
+/**
+ * A panel. Inside a PanelGrid pass `span` (12-column grid; full width below the lg breakpoint).
+ * On its own it draws its own border. Pass `minWidth` for table content: below that width the
+ * body scrolls sideways instead of squeezing the columns.
+ */
 export function Section({
   title,
   meta,
   span,
+  minWidth,
   children,
   className,
 }: {
   title?: ReactNode;
   meta?: ReactNode;
   span?: number;
+  minWidth?: number;
   children: ReactNode;
   className?: string;
 }) {
@@ -262,21 +284,29 @@ export function Section({
     <section
       className={cn(
         "min-w-0 bg-panel",
-        span === undefined && "overflow-hidden rounded border border-line",
+        span === undefined
+          ? "overflow-hidden rounded border border-line"
+          : "col-span-12 lg:[grid-column:span_var(--span)/span_var(--span)]",
         className,
       )}
-      style={span === undefined ? undefined : { gridColumn: `span ${span} / span ${span}` }}
+      style={span === undefined ? undefined : ({ "--span": span } as CSSProperties)}
     >
       {title !== undefined && <PanelHeader title={title} meta={meta} />}
-      {children}
+      {minWidth ? (
+        <div className="overflow-x-auto">
+          <div style={{ minWidth }}>{children}</div>
+        </div>
+      ) : (
+        children
+      )}
     </section>
   );
 }
 
 export function PanelHeader({ title, meta }: { title: ReactNode; meta?: ReactNode }) {
   return (
-    <div className="flex h-10 items-center justify-between gap-3 border-b border-line2 px-4">
-      <h2 className="truncate text-[13px] font-semibold">{title}</h2>
+    <div className="flex min-h-10 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-line2 px-4 py-2">
+      <h2 className="text-[13px] font-semibold">{title}</h2>
       {meta !== undefined && (
         <div className="flex items-center gap-2.5 text-xs text-mute">{meta}</div>
       )}
@@ -312,7 +342,7 @@ export function HeadRow({
       )}
       style={{ gridTemplateColumns: columns }}
     >
-      {children}
+      {withCellRoles(children, "columnheader")}
     </div>
   );
 }
@@ -342,12 +372,12 @@ export function BodyRow({
   if (href)
     return (
       <NextLink role="row" href={href} className={classes} style={style}>
-        {children}
+        {withCellRoles(children, "cell")}
       </NextLink>
     );
   return (
     <div role="row" className={classes} style={style}>
-      {children}
+      {withCellRoles(children, "cell")}
     </div>
   );
 }
@@ -371,4 +401,17 @@ export function PageTitle({
       {actions}
     </div>
   );
+}
+
+/**
+ * Gives each child of a grid row an ARIA table role ("columnheader" or "cell"), looking through
+ * fragments, so div-based tables read as tables to screen readers.
+ */
+export function withCellRoles(children: ReactNode, role: "columnheader" | "cell"): ReactNode {
+  return Children.map(children, (child) => {
+    if (!isValidElement(child)) return child;
+    const element = child as ReactElement<{ children?: ReactNode; role?: string }>;
+    if (element.type === Fragment) return withCellRoles(element.props.children, role);
+    return element.props.role ? element : cloneElement(element, { role });
+  });
 }

@@ -69,14 +69,12 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
         exports.
       </div>
       <Section
+        minWidth={640}
         title="Match event files"
         meta={round[0]?.round.replace(/ · R(\d+)$/, " round $1") ?? ""}
       >
         <div className="px-4 pb-3">
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_repeat(3,minmax(0,0.6fr))] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_repeat(3,minmax(0,0.6fr))] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute">
             <span>Match</span>
             <span>Round</span>
           </div>
@@ -109,12 +107,9 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
       <DataNote label="DEMO DATA">
         The exports list is example data until the exports API is built.
       </DataNote>
-      <Section title="Exports" meta="Also in the Downloads tray">
+      <Section minWidth={600} title="Exports" meta="Also in the Downloads tray">
         <div className="px-4 pb-3">
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,2fr)_minmax(0,0.6fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,2fr)_minmax(0,0.6fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.9fr)] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute">
             <span>File</span>
             <span>Type</span>
             <span>Size</span>

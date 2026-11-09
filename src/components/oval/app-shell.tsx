@@ -5,17 +5,33 @@
 import { Home, Menu, Pin, PinOff, Search, X } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { GlobalSearch } from "@/components/oval/global-search";
 import { Button } from "@/components/ui/button";
-import { usePins, type PinnedPage } from "@/lib/pins";
+import { PinsProvider, usePins } from "@/lib/pins";
 import { cn } from "@/lib/utils";
 import type { ShellData } from "@/server/shell";
 
 const ovalLogo = "/assets/oval-logo.png";
 
 const ShellContext = createContext<ShellData | null>(null);
+const LabelContext = createContext<((segment: string, label: string) => void) | null>(null);
+
+/** Lets a page name its own URL segment in the breadcrumb, e.g. a match id → "Bath v Sale". */
+export function BreadcrumbLabel({ segment, label }: { segment: string; label: string }) {
+  const register = useContext(LabelContext);
+  useEffect(() => register?.(segment, label), [register, segment, label]);
+  return null;
+}
 
 export function useShell(): ShellData {
   const value = useContext(ShellContext);
@@ -36,7 +52,18 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname() ?? "/";
-  const breadcrumb = useMemo(() => buildBreadcrumb(pathname, data), [pathname, data]);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const registerLabel = useCallback(
+    (segment: string, label: string) =>
+      setLabels((current) =>
+        current[segment] === label ? current : { ...current, [segment]: label },
+      ),
+    [],
+  );
+  const breadcrumb = useMemo(
+    () => buildBreadcrumb(pathname, { ...data, names: { ...data.names, ...labels } }),
+    [pathname, data, labels],
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -51,123 +78,131 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
 
   return (
     <ShellContext.Provider value={data}>
-      <div className="min-h-screen bg-page text-[13px] text-ink antialiased md:flex">
-        <aside className="hidden h-screen w-[200px] shrink-0 flex-col bg-side px-2.5 py-3.5 md:sticky md:top-0 md:flex">
-          <Sidebar data={data} pathname={pathname} />
-        </aside>
+      <LabelContext.Provider value={registerLabel}>
+        <PinsProvider initialPins={data.pins} initialHome={data.homePath}>
+          <div className="min-h-screen bg-page text-[13px] text-ink antialiased md:flex">
+            <aside className="hidden h-screen w-[200px] shrink-0 flex-col bg-side px-2.5 py-3.5 md:sticky md:top-0 md:flex">
+              <Sidebar data={data} pathname={pathname} />
+            </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center gap-4 border-b border-line bg-panel px-4 md:px-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              aria-label="Open navigation"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu className="size-4" />
-            </Button>
-            <nav aria-label="Breadcrumb" className="min-w-0 truncate whitespace-nowrap text-[13px]">
-              {breadcrumb.map((part, index) => (
-                <span key={`${part.label}-${index}`}>
-                  {index > 0 && <span className="mx-1 text-sep">/</span>}
-                  {part.href && index < breadcrumb.length - 1 ? (
-                    <NextLink href={part.href} className="text-mute hover:text-ink">
-                      {part.label}
-                    </NextLink>
-                  ) : (
-                    <span
-                      className={
-                        index === breadcrumb.length - 1 ? "font-medium text-ink" : "text-mute"
-                      }
-                    >
-                      {part.label}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </nav>
-            <button
-              type="button"
-              aria-label="Search (⌘K)"
-              onClick={() => setSearchOpen(true)}
-              className="ml-auto hidden h-[30px] w-80 items-center gap-2 rounded-[3px] border border-line bg-page px-2.5 text-faint hover:border-faint lg:flex"
-            >
-              <Search className="size-3.5" />
-              <span className="flex-1 text-left">Search</span>
-              <span className="font-mono text-[11px] font-medium text-mute">⌘K</span>
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="ml-auto lg:hidden"
-              aria-label="Search"
-              onClick={() => setSearchOpen(true)}
-            >
-              <Search className="size-4" />
-            </Button>
-            <NextLink
-              href={data.downloadsHref}
-              className="flex h-[30px] items-center gap-2 rounded-[3px] border border-line bg-panel px-2.5 font-medium text-ink hover:bg-subtle"
-            >
-              Downloads <span className="font-mono text-xs font-medium text-mute">3</span>
-            </NextLink>
-            <PinButton
-              pathname={pathname}
-              label={
-                breadcrumb.at(-2)?.label && breadcrumb.at(-1)?.label === "Overview"
-                  ? (breadcrumb.at(-2)?.label ?? "Page")
-                  : (breadcrumb.at(-1)?.label ?? "Page")
-              }
-              defaults={pinDefaults(data)}
-            />
-          </header>
-          <main className="flex min-w-0 flex-1 flex-col">{children}</main>
-        </div>
-
-        {mobileOpen && (
-          <div
-            className="fixed inset-0 z-50 bg-ink/35 md:hidden"
-            onClick={() => setMobileOpen(false)}
-          >
-            <aside
-              className="flex h-full w-64 flex-col bg-side p-3"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="mb-1 flex justify-end">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center gap-4 border-b border-line bg-panel px-4 md:px-6">
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Close navigation"
-                  className="text-side-ink hover:bg-side-act hover:text-white"
-                  onClick={() => setMobileOpen(false)}
+                  className="md:hidden"
+                  aria-label="Open navigation"
+                  onClick={() => setMobileOpen(true)}
                 >
-                  <X className="size-4" />
+                  <Menu className="size-4" />
                 </Button>
-              </div>
+                <nav
+                  aria-label="Breadcrumb"
+                  className="min-w-0 truncate whitespace-nowrap text-[13px]"
+                >
+                  {breadcrumb.map((part, index) => (
+                    <span key={`${part.label}-${index}`}>
+                      {index > 0 && <span className="mx-1 text-sep">/</span>}
+                      {part.href && index < breadcrumb.length - 1 ? (
+                        <NextLink href={part.href} className="text-mute hover:text-ink">
+                          {part.label}
+                        </NextLink>
+                      ) : (
+                        <span
+                          className={
+                            index === breadcrumb.length - 1 ? "font-medium text-ink" : "text-mute"
+                          }
+                        >
+                          {part.label}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </nav>
+                <button
+                  type="button"
+                  aria-label="Search (⌘K)"
+                  onClick={() => setSearchOpen(true)}
+                  className="ml-auto hidden h-[30px] w-80 items-center gap-2 rounded-[3px] border border-line bg-page px-2.5 text-faint hover:border-faint lg:flex"
+                >
+                  <Search className="size-3.5" />
+                  <span className="flex-1 text-left">Search</span>
+                  <span className="font-mono text-[11px] font-medium text-mute">⌘K</span>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto lg:hidden"
+                  aria-label="Search"
+                  onClick={() => setSearchOpen(true)}
+                >
+                  <Search className="size-4" />
+                </Button>
+                <NextLink
+                  href={data.downloadsHref}
+                  className="flex h-[30px] items-center gap-2 rounded-[3px] border border-line bg-panel px-2.5 font-medium text-ink hover:bg-subtle"
+                >
+                  Downloads <span className="font-mono text-xs font-medium text-mute">3</span>
+                </NextLink>
+                <PinButton
+                  pathname={pathname}
+                  label={
+                    breadcrumb.at(-2)?.label && breadcrumb.at(-1)?.label === "Overview"
+                      ? (breadcrumb.at(-2)?.label ?? "Page")
+                      : (breadcrumb.at(-1)?.label ?? "Page")
+                  }
+                />
+              </header>
+              <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+            </div>
+
+            {mobileOpen && (
               <div
-                className="flex flex-1 flex-col"
-                onClick={(event) => {
-                  if ((event.target as HTMLElement).closest("a")) setMobileOpen(false);
+                role="dialog"
+                aria-modal="true"
+                aria-label="Navigation"
+                className="fixed inset-0 z-50 bg-ink/35 md:hidden"
+                onClick={() => setMobileOpen(false)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setMobileOpen(false);
                 }}
               >
-                <Sidebar data={data} pathname={pathname} />
+                <aside
+                  className="flex h-full w-64 flex-col bg-side p-3"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="mb-1 flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Close navigation"
+                      className="text-side-ink hover:bg-side-act hover:text-white"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                  <div
+                    className="flex flex-1 flex-col"
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest("a")) setMobileOpen(false);
+                    }}
+                  >
+                    <Sidebar data={data} pathname={pathname} />
+                  </div>
+                </aside>
               </div>
-            </aside>
+            )}
+            <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
           </div>
-        )}
-        <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-      </div>
+        </PinsProvider>
+      </LabelContext.Provider>
     </ShellContext.Provider>
   );
 }
 
-function pinDefaults(data: ShellData): PinnedPage[] {
-  return data.defaultPins.map((pin) => ({ path: pin.href, label: pin.label }));
-}
-
 function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
-  const { pins, home, setHome } = usePins(pinDefaults(data));
+  const { pins, home, setHome } = usePins();
   const item = (active: boolean) =>
     cn(
       "flex h-[30px] items-center rounded-[3px] px-2.5 text-[13px] no-underline",
@@ -199,7 +234,7 @@ function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
         >
           Next opponent
           <span className="ml-auto truncate pl-2 text-xs text-side-lab">
-            {data.nextOpponent?.label ?? "None"}
+            {data.nextOpponent?.label ?? "Season over"}
           </span>
         </NextLink>
         <div className={label}>Library</div>
@@ -251,16 +286,8 @@ function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
   );
 }
 
-function PinButton({
-  pathname,
-  label,
-  defaults,
-}: {
-  pathname: string;
-  label: string;
-  defaults: PinnedPage[];
-}) {
-  const { isPinned, togglePin } = usePins(defaults);
+function PinButton({ pathname, label }: { pathname: string; label: string }) {
+  const { isPinned, togglePin } = usePins();
   const pinned = isPinned(pathname);
   return (
     <Button

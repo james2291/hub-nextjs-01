@@ -176,13 +176,11 @@ export function Opposition({ slug }: { slug: string }) {
         <PanelGrid>
           <Section
             span={6}
+            minWidth={420}
             title="Season so far"
             meta={`Gallagher PREM${next ? `, before ${next.round}` : ""}`}
           >
-            <div
-              role="row"
-              className="grid h-[30px] grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-            >
+            <div className="grid h-[30px] grid-cols-[minmax(0,1fr)_120px_120px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
               <span />
               <span className="text-right">{mine.name}</span>
               <span className="text-right">{opponent.name}</span>
@@ -236,6 +234,7 @@ export function Opposition({ slug }: { slug: string }) {
             <Section
               key={club.slug}
               span={6}
+              minWidth={480}
               title={`${possessive(placeName(club.name))} last 6`}
               meta="All competitions"
             >
@@ -251,10 +250,7 @@ export function Opposition({ slug }: { slug: string }) {
 function LastSix({ club, fixtures }: { club: ClubRef; fixtures: Fixture[] }) {
   return (
     <>
-      <div
-        role="row"
-        className="grid h-[30px] grid-cols-[60px_minmax(0,1fr)_20px_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-      >
+      <div className="grid h-[30px] grid-cols-[60px_minmax(0,1fr)_20px_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
         <span>Date</span>
         <span>Match</span>
         <span />

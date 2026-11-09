@@ -109,11 +109,8 @@ export function CompetitionPeople({ slug }: { slug: string }) {
       <DataNote label="DEMO DATA">
         Player rows are Hub demo data until the player feed arrives.
       </DataNote>
-      <Section title="Players" meta={`${roster.length} with connected data`}>
-        <div
-          role="row"
-          className="grid h-[30px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_50px_minmax(0,1.2fr)] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-        >
+      <Section minWidth={640} title="Players" meta={`${roster.length} with connected data`}>
+        <div className="grid h-[30px] grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_50px_minmax(0,1.2fr)] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
           <span>Player</span>
           <span>Club</span>
           <span>Position</span>

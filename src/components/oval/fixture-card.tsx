@@ -5,12 +5,15 @@
 // so every asset can be ticked; Download hands the selection to the exports API once it exists.
 import { ArrowRight, Download, RotateCcw, Search } from "lucide-react";
 import NextLink from "next/link";
-import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import { useClubHref } from "@/components/oval/app-shell";
+import { ComingSoonButton } from "@/components/oval/coming-soon";
+import { withCellRoles } from "@/components/oval/primitives";
 import { Button } from "@/components/ui/button";
 import { recordFor, resultFor, ukDate, ukTime, type Fixture, type ResultLetter } from "@/lib/rugby";
+import { useUrlState } from "@/lib/url-state";
 import { cn } from "@/lib/utils";
 
 const PRESETS = {
@@ -44,12 +47,36 @@ export function FixtureCard({
   sourceNote,
 }: FixtureCardProps) {
   const clubHref = useClubHref();
-  const [competition, setCompetition] = useState(ALL);
-  const [round, setRound] = useState(ALL);
-  const [result, setResult] = useState<ResultLetter | typeof ALL>(ALL);
-  const [preset, setPreset] = useState<Preset>("Default");
-  const [query, setQuery] = useState("");
+  // Filters live in the URL so a filtered Fixture Card can be shared and survives Back.
+  const router = useRouter();
+  const pathname = usePathname();
+  const [competition, setCompetition] = useUrlState<string>("competition", ALL);
+  const [round, setRound] = useUrlState<string>("round", ALL);
+  const [result, setResult] = useUrlState<ResultLetter | typeof ALL>("result", ALL, [
+    ALL,
+    "W",
+    "D",
+    "L",
+  ]);
+  const [preset, setPreset] = useUrlState<Preset>("assets", "Default", [
+    "Default",
+    "Videos",
+    "Reports",
+    "Files",
+  ]);
+  const [order, setOrder] = useUrlState<"newest" | "oldest">("order", "newest", [
+    "newest",
+    "oldest",
+  ]);
+  const [urlQuery, setUrlQuery] = useUrlState<string>("q", "");
+  const [query, setQuery] = useState<string>(urlQuery);
+  useEffect(() => {
+    if (query === urlQuery) return;
+    const timer = window.setTimeout(() => setUrlQuery(query), 300);
+    return () => window.clearTimeout(timer);
+  }, [query, urlQuery, setUrlQuery]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showAssets, setShowAssets] = useState(false);
 
   const competitions = useMemo(
     () => [...new Map(fixtures.map((f) => [f.competition.slug, f.competition])).values()],
@@ -64,7 +91,7 @@ export function FixtureCard({
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return fixtures.filter((fixture) => {
+    const filtered = fixtures.filter((fixture) => {
       if (competition !== ALL && fixture.competition.slug !== competition) return false;
       if (round !== ALL && fixture.round !== round) return false;
       if (result !== ALL && perspective && resultFor(fixture, perspective) !== result) return false;
@@ -76,7 +103,8 @@ export function FixtureCard({
         fixture.referee?.name ?? "",
       ].some((text) => text.toLowerCase().includes(q));
     });
-  }, [fixtures, competition, round, result, perspective, query]);
+    return order === "oldest" ? [...filtered].reverse() : filtered;
+  }, [fixtures, competition, round, result, perspective, query, order]);
 
   const columns = PRESETS[preset];
   const key = (fixtureId: number, asset: string) => `${fixtureId}:${asset}`;
@@ -99,12 +127,9 @@ export function FixtureCard({
       return next;
     });
   const clear = () => {
-    setCompetition(ALL);
-    setRound(ALL);
-    setResult(ALL);
-    setPreset("Default");
     setQuery("");
     setSelected(new Set());
+    router.replace(pathname, { scroll: false });
   };
 
   const grid = `104px minmax(0,1.3fr) 76px minmax(0,1.3fr) 100px minmax(0,1.15fr) minmax(0,0.95fr) ${columns.map(() => "64px").join(" ")} 84px`;
@@ -181,49 +206,163 @@ export function FixtureCard({
           <RotateCcw className="size-3.5" />
           Clear
         </Button>
-        <Button
-          aria-disabled={selected.size === 0}
-          disabled={selected.size === 0}
-          onClick={() =>
-            toast(
-              `${selected.size} ${selected.size === 1 ? "file" : "files"} selected for download. Exports aren't connected yet.`,
-            )
-          }
-          className="px-3.5 disabled:bg-[#B8B8B2] disabled:opacity-100"
-        >
-          <Download className="size-3.5" />
-          {selected.size ? `Download ${selected.size}` : "Download"}
-        </Button>
+        {selected.size === 0 ? (
+          <Button
+            disabled
+            title="Tick the assets you need first"
+            className="px-3.5 disabled:bg-[#B8B8B2] disabled:opacity-100"
+          >
+            <Download className="size-3.5" />
+            Download
+          </Button>
+        ) : (
+          <ComingSoonButton variant="default" needs="the exports API" className="px-3.5">
+            <Download className="size-3.5" />
+            Download {selected.size}
+          </ComingSoonButton>
+        )}
       </div>
 
-      <div className="overflow-x-auto rounded border border-line bg-panel">
-        <div className="min-w-[1100px]">
+      {/* Phones: one card per match; asset ticks behind "Select assets". */}
+      <div className="overflow-hidden rounded border border-line bg-panel md:hidden">
+        <div className="flex items-center justify-between border-b border-line2 px-4 py-2.5">
+          <span className="text-xs font-medium text-ink">{summary}</span>
+          <button
+            type="button"
+            aria-expanded={showAssets}
+            onClick={() => setShowAssets((value) => !value)}
+            className="h-7 min-h-0 rounded-[3px] border border-line px-2.5 text-xs font-medium"
+          >
+            {showAssets ? "Hide assets" : "Select assets"}
+          </button>
+        </div>
+        {rows.length === 0 && (
+          <div className="px-4 py-8 text-center text-mute">No matches for these filters.</div>
+        )}
+        {rows.map((fixture) => {
+          const outcome = perspective ? resultFor(fixture, perspective) : null;
+          const label = `${fixture.home.club.name} v ${fixture.away.club.name}`;
+          return (
+            <div key={fixture.id} className="border-b border-line2 px-4 py-3 last:border-b-0">
+              <div className="flex justify-between text-xs text-mute">
+                <span>
+                  {ukDate(fixture.dateTime)} ·{" "}
+                  <span className="font-mono">{ukTime(fixture.dateTime)}</span>
+                </span>
+                <span className="truncate pl-2">{fixture.round}</span>
+              </div>
+              <NextLink
+                href={`/matches/${fixture.id}`}
+                className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5"
+              >
+                <span
+                  className={cn(
+                    "truncate text-right",
+                    perspective === fixture.home.club.slug ? "font-medium text-club" : "text-ink",
+                  )}
+                >
+                  {fixture.home.club.name}
+                </span>
+                <span
+                  className={cn(
+                    "text-[15px] font-semibold tabular-nums",
+                    outcome === "W" ? "text-win" : outcome === "L" ? "text-loss" : "text-ink",
+                  )}
+                >
+                  {fixture.scored ? `${fixture.home.score}–${fixture.away.score}` : "v"}
+                </span>
+                <span
+                  className={cn(
+                    "truncate",
+                    perspective === fixture.away.club.slug ? "font-medium text-club" : "text-ink",
+                  )}
+                >
+                  {fixture.away.club.name}
+                </span>
+              </NextLink>
+              <div className="mt-1 truncate text-center text-[11px] text-mute">
+                {[fixture.competition.name, fixture.venue, fixture.referee?.name]
+                  .filter(Boolean)
+                  .join(" · ")}
+                {!fixture.scored && " · No score in feed"}
+                {outcome && ` · ${outcome === "W" ? "Won" : outcome === "L" ? "Lost" : "Drawn"}`}
+              </div>
+              {showAssets && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {columns.map((asset) => {
+                    const id = key(fixture.id, asset);
+                    return (
+                      <label
+                        key={asset}
+                        className={cn(
+                          "flex h-7 items-center gap-1.5 rounded-[3px] border px-2 text-xs",
+                          selected.has(id) ? "border-club bg-club-tint" : "border-line",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={`${asset} · ${label}`}
+                          checked={selected.has(id)}
+                          onChange={() => toggle(id)}
+                          className="size-3.5 min-h-0 accent-[var(--club)]"
+                        />
+                        {asset}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded border border-line bg-panel md:block">
+        <div role="table" aria-label={title} className="min-w-[1100px]">
           <div
             role="row"
             className="grid items-center gap-2.5 border-b border-line bg-[#F9FAFB] px-4 py-2.5 text-[11px] font-medium text-mute"
             style={{ gridTemplateColumns: grid }}
           >
-            <span>Date · KO (UK)</span>
-            <span className="text-right">Home</span>
-            <span className="text-center">Result</span>
-            <span>Away</span>
-            <span>Round</span>
-            <span>Venue</span>
-            <span>Referee</span>
-            {columns.map((asset) => (
-              <button
-                key={asset}
-                type="button"
-                title="Select the whole column"
-                onClick={() => toggleColumn(asset)}
-                className="min-h-0 text-center uppercase hover:text-ink"
-              >
-                {asset}
-              </button>
-            ))}
-            <span className="text-center">Match Centre</span>
+            {withCellRoles(
+              <>
+                <span aria-sort={order === "newest" ? "descending" : "ascending"}>
+                  <button
+                    type="button"
+                    onClick={() => setOrder(order === "newest" ? "oldest" : "newest")}
+                    title={
+                      order === "newest"
+                        ? "Newest first: show oldest first"
+                        : "Oldest first: show newest first"
+                    }
+                    className="inline-flex min-h-0 items-center gap-1 hover:text-ink"
+                  >
+                    Date · KO (UK) {order === "newest" ? "↓" : "↑"}
+                  </button>
+                </span>
+                <span className="text-right">Home</span>
+                <span className="text-center">Result</span>
+                <span>Away</span>
+                <span>Round</span>
+                <span>Venue</span>
+                <span>Referee</span>
+                {columns.map((asset) => (
+                  <button
+                    key={asset}
+                    type="button"
+                    title="Select the whole column"
+                    onClick={() => toggleColumn(asset)}
+                    className="min-h-0 text-center uppercase hover:text-ink"
+                  >
+                    {asset}
+                  </button>
+                ))}
+                <span className="text-center">Match Centre</span>
+              </>,
+              "columnheader",
+            )}
           </div>
-          <div className="max-h-[560px] overflow-y-auto">
+          <div role="rowgroup" className="max-h-[560px] overflow-y-auto">
             {rows.length === 0 && (
               <div className="px-4 py-8 text-center text-mute">No matches for these filters.</div>
             )}
@@ -242,110 +381,124 @@ export function FixtureCard({
                   )}
                   style={{ gridTemplateColumns: grid }}
                 >
-                  <span className="flex flex-col leading-[1.3]">
-                    <span className="text-xs text-ink">{ukDate(fixture.dateTime)}</span>
-                    <span className="font-mono text-[11px] font-medium text-faint">
-                      {ukTime(fixture.dateTime)}
-                    </span>
-                  </span>
-                  <NextLink
-                    href={clubHref(fixture.home.club.slug)}
-                    className={cn(
-                      "truncate text-right hover:underline",
-                      homeIsClub ? "font-medium text-club" : "text-ink",
-                    )}
-                  >
-                    {fixture.home.club.name}
-                  </NextLink>
-                  <NextLink
-                    href={`/matches/${fixture.id}`}
-                    className="flex flex-col items-center leading-[1.3] hover:underline"
-                  >
-                    {fixture.scored ? (
-                      <>
-                        <span
-                          className={cn(
-                            "text-sm font-semibold leading-[1.3] tabular-nums",
-                            outcome === "W"
-                              ? "text-win"
-                              : outcome === "L"
-                                ? "text-loss"
-                                : "text-ink",
-                          )}
-                        >
-                          {fixture.home.score}–{fixture.away.score}
+                  {withCellRoles(
+                    <>
+                      <span className="flex flex-col leading-[1.3]">
+                        <span className="text-xs text-ink">{ukDate(fixture.dateTime)}</span>
+                        <span className="font-mono text-[11px] font-medium text-faint">
+                          {ukTime(fixture.dateTime)}
                         </span>
-                        {fixture.home.ht !== null && fixture.away.ht !== null && (
-                          <span className="font-mono text-[11px] text-faint">
-                            HT {fixture.home.ht}–{fixture.away.ht}
+                      </span>
+                      <NextLink
+                        href={clubHref(fixture.home.club.slug)}
+                        className={cn(
+                          "truncate text-right hover:underline",
+                          homeIsClub ? "font-medium text-club" : "text-ink",
+                        )}
+                      >
+                        {fixture.home.club.name}
+                      </NextLink>
+                      <NextLink
+                        href={`/matches/${fixture.id}`}
+                        className="flex flex-col items-center leading-[1.3] hover:underline"
+                      >
+                        {fixture.scored ? (
+                          <>
+                            <span
+                              className={cn(
+                                "text-sm font-semibold leading-[1.3] tabular-nums",
+                                outcome === "W"
+                                  ? "text-win"
+                                  : outcome === "L"
+                                    ? "text-loss"
+                                    : "text-ink",
+                              )}
+                            >
+                              {fixture.home.score}–{fixture.away.score}
+                              {outcome && (
+                                <span className="sr-only">
+                                  {outcome === "W"
+                                    ? ", won"
+                                    : outcome === "L"
+                                      ? ", lost"
+                                      : ", drawn"}
+                                </span>
+                              )}
+                            </span>
+                            {fixture.home.ht !== null && fixture.away.ht !== null && (
+                              <span className="font-mono text-[11px] text-faint">
+                                HT {fixture.home.ht}–{fixture.away.ht}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-center text-[11px] leading-tight text-faint">
+                            No score in feed
                           </span>
                         )}
-                      </>
-                    ) : (
-                      <span className="text-center text-[11px] leading-tight text-faint">
-                        No score in feed
+                      </NextLink>
+                      <NextLink
+                        href={clubHref(fixture.away.club.slug)}
+                        className={cn(
+                          "truncate hover:underline",
+                          awayIsClub ? "font-medium text-club" : "text-ink",
+                        )}
+                      >
+                        {fixture.away.club.name}
+                      </NextLink>
+                      <span className="flex min-w-0 flex-col leading-[1.3]">
+                        <span className="truncate text-xs text-[#55554F]">{fixture.round}</span>
+                        <NextLink
+                          href={`/competitions/${fixture.competition.slug}`}
+                          className="truncate text-[11px] text-faint hover:underline"
+                        >
+                          {fixture.competition.name}
+                        </NextLink>
                       </span>
-                    )}
-                  </NextLink>
-                  <NextLink
-                    href={clubHref(fixture.away.club.slug)}
-                    className={cn(
-                      "truncate hover:underline",
-                      awayIsClub ? "font-medium text-club" : "text-ink",
-                    )}
-                  >
-                    {fixture.away.club.name}
-                  </NextLink>
-                  <span className="flex min-w-0 flex-col leading-[1.3]">
-                    <span className="truncate text-xs text-[#55554F]">{fixture.round}</span>
-                    <NextLink
-                      href={`/competitions/${fixture.competition.slug}`}
-                      className="truncate text-[11px] text-faint hover:underline"
-                    >
-                      {fixture.competition.name}
-                    </NextLink>
-                  </span>
-                  <span className="flex min-w-0 flex-col leading-[1.3]">
-                    <span className="truncate text-xs text-[#55554F]">{fixture.venue}</span>
-                    {fixture.attendance !== null && (
-                      <span className="text-[11px] text-faint">
-                        {fixture.attendance.toLocaleString("en-GB")} attendance
+                      <span className="flex min-w-0 flex-col leading-[1.3]">
+                        <span className="truncate text-xs text-[#55554F]">{fixture.venue}</span>
+                        {fixture.attendance !== null && (
+                          <span className="text-[11px] text-faint">
+                            {fixture.attendance.toLocaleString("en-GB")} attendance
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                  {fixture.referee ? (
-                    <NextLink
-                      href={`/referees/${fixture.referee.slug}`}
-                      className="truncate text-xs text-[#55554F] hover:underline"
-                    >
-                      {fixture.referee.name}
-                    </NextLink>
-                  ) : (
-                    <span className="text-xs text-faint">Not in feed</span>
+                      {fixture.referee ? (
+                        <NextLink
+                          href={`/referees/${fixture.referee.slug}`}
+                          className="truncate text-xs text-[#55554F] hover:underline"
+                        >
+                          {fixture.referee.name}
+                        </NextLink>
+                      ) : (
+                        <span className="text-xs text-faint">Not in feed</span>
+                      )}
+                      {columns.map((asset) => {
+                        const id = key(fixture.id, asset);
+                        return (
+                          <span key={asset} className="flex justify-center">
+                            <input
+                              type="checkbox"
+                              aria-label={`${asset} · ${label}`}
+                              checked={selected.has(id)}
+                              onChange={() => toggle(id)}
+                              className="size-[17px] min-h-0 cursor-pointer accent-[var(--club)]"
+                            />
+                          </span>
+                        );
+                      })}
+                      <span className="flex justify-center">
+                        <NextLink
+                          href={`/matches/${fixture.id}`}
+                          aria-label={`Open match centre: ${label}`}
+                          className="grid size-7 place-items-center rounded-[3px] border border-line bg-panel text-ink hover:bg-subtle"
+                        >
+                          <ArrowRight className="size-3.5" />
+                        </NextLink>
+                      </span>
+                    </>,
+                    "cell",
                   )}
-                  {columns.map((asset) => {
-                    const id = key(fixture.id, asset);
-                    return (
-                      <span key={asset} className="flex justify-center">
-                        <input
-                          type="checkbox"
-                          aria-label={`${asset} · ${label}`}
-                          checked={selected.has(id)}
-                          onChange={() => toggle(id)}
-                          className="size-[17px] min-h-0 cursor-pointer accent-[var(--club)]"
-                        />
-                      </span>
-                    );
-                  })}
-                  <span className="flex justify-center">
-                    <NextLink
-                      href={`/matches/${fixture.id}`}
-                      aria-label={`Open match centre: ${label}`}
-                      className="grid size-7 place-items-center rounded-[3px] border border-line bg-panel text-ink hover:bg-subtle"
-                    >
-                      <ArrowRight className="size-3.5" />
-                    </NextLink>
-                  </span>
                 </div>
               );
             })}

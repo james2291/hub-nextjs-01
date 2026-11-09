@@ -1,78 +1,120 @@
 "use client";
 
-// User Pinned (docs/openapi.yaml "User Pinned"): pages the user pins to the sidebar, and which
-// pinned page opens as home. Stored in the browser until GET/POST /api/v1/me/pins is built.
-import { useSyncExternalStore } from "react";
+// User Pinned on the client. The root layout reads the user's pins on the server; changes go
+// through the User Pinned API (POST/DELETE /api/v1/user/pins, PUT /api/v1/user/home) with an
+// optimistic update that rolls back if the request fails.
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { toast } from "sonner";
 
+export type Pin = { id: string; path: string; label: string; order: number };
 export type PinnedPage = { path: string; label: string };
-type PinState = { pins: PinnedPage[] | null; home: string | null };
 
-// v2: tab URLs changed in the redesign, so pins saved under v1 are dropped.
-const KEY = "oval-hub:pins:v2";
-const empty: PinState = { pins: null, home: null };
+type PinsValue = {
+  pins: Pin[];
+  home: string | null;
+  isPinned: (path: string) => boolean;
+  togglePin: (page: PinnedPage) => Promise<void>;
+  setHome: (path: string | null) => Promise<void>;
+};
 
-let state: PinState = empty;
-let loaded = false;
-const listeners = new Set<() => void>();
+const PinsContext = createContext<PinsValue | null>(null);
 
-function load() {
-  if (loaded || typeof window === "undefined") return;
-  loaded = true;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) state = { ...empty, ...(JSON.parse(raw) as Partial<PinState>) };
-  } catch {
-    /* keep defaults */
+async function request(url: string, init: RequestInit): Promise<Response> {
+  const response = await fetch(url, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    throw new Error(body?.error?.message ?? "The change wasn't saved.");
   }
+  return response;
 }
 
-function save(next: PinState) {
-  state = next;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {
-    /* ignore */
-  }
-  listeners.forEach((listener) => listener());
-}
+export function PinsProvider({
+  initialPins,
+  initialHome,
+  children,
+}: {
+  initialPins: Pin[];
+  initialHome: string | null;
+  children: ReactNode;
+}) {
+  const [pins, setPins] = useState(initialPins);
+  const [home, setHomeState] = useState(initialHome);
 
-/** `defaults` are shown until the user pins or unpins something. */
-export function usePins(defaults: PinnedPage[]) {
-  const snapshot = useSyncExternalStore(
-    (listener) => {
-      load();
-      listeners.add(listener);
-      listener();
-      return () => listeners.delete(listener);
+  const togglePin = useCallback(
+    async (page: PinnedPage) => {
+      const existing = pins.find((pin) => pin.path === page.path);
+      const before = { pins, home };
+      try {
+        if (existing) {
+          setPins(pins.filter((pin) => pin.id !== existing.id));
+          if (home === existing.path) setHomeState(null);
+          await request(`/api/v1/user/pins/${encodeURIComponent(existing.id)}`, {
+            method: "DELETE",
+          });
+        } else {
+          const optimistic: Pin = {
+            id: `pending-${page.path}`,
+            path: page.path,
+            label: page.label,
+            order: pins.length,
+          };
+          setPins([...pins, optimistic]);
+          const saved = (await (
+            await request("/api/v1/user/pins", { method: "POST", body: JSON.stringify(page) })
+          ).json()) as Pin;
+          setPins((current) => current.map((pin) => (pin.id === optimistic.id ? saved : pin)));
+        }
+      } catch (error) {
+        setPins(before.pins);
+        setHomeState(before.home);
+        toast(error instanceof Error ? error.message : "The change wasn't saved.");
+      }
     },
-    () => {
-      load();
-      return state;
-    },
-    () => empty,
+    [pins, home],
   );
-  const pins = snapshot.pins ?? defaults;
-  return {
-    pins,
-    home: snapshot.home,
-    isPinned: (path: string) => pins.some((pin) => pin.path === path),
-    togglePin: (page: PinnedPage) => {
-      const current = state.pins ?? defaults;
-      const exists = current.some((pin) => pin.path === page.path);
-      save(
-        exists
-          ? {
-              pins: current.filter((pin) => pin.path !== page.path),
-              home: state.home === page.path ? null : state.home,
-            }
-          : { pins: [...current, page], home: state.home },
-      );
+
+  const setHome = useCallback(
+    async (path: string | null) => {
+      const before = home;
+      setHomeState(path);
+      try {
+        await request("/api/v1/user/home", { method: "PUT", body: JSON.stringify({ path }) });
+      } catch (error) {
+        setHomeState(before);
+        toast(error instanceof Error ? error.message : "The change wasn't saved.");
+      }
     },
-    setHome: (path: string | null) => save({ pins: state.pins ?? defaults, home: path }),
-  };
+    [home],
+  );
+
+  const value = useMemo<PinsValue>(
+    () => ({
+      pins,
+      home,
+      isPinned: (path) => pins.some((pin) => pin.path === path),
+      togglePin,
+      setHome,
+    }),
+    [pins, home, togglePin, setHome],
+  );
+  return createElement(PinsContext.Provider, { value }, children);
 }
 
-export function readHomePin() {
-  load();
-  return state.home;
+export function usePins(): PinsValue {
+  const value = useContext(PinsContext);
+  if (!value) throw new Error("usePins must be used inside PinsProvider");
+  return value;
 }

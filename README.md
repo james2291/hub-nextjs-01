@@ -129,9 +129,9 @@ Groundwork for reshaping the 33 routed spec endpoints (the "Map v2 source" set) 
 - `GET /api/v1/routing` now gives each route's `operationId` and `contract`, plus `progress` (33 routed spec endpoints, 0 reshaped).
 - Pass-through bodies now include `request.params` / `request.query`, so a saved response is a complete fixture.
 - Fixed: error bodies now match `ApiError`. The no-v2-source 501 used `code: "not_implemented"` (not in the enum) plus a top-level `hub` key (`additionalProperties: false`). It now sends `upstream_unavailable` with `details.reason: "no_v2_source"`. Reshaped endpoints map upstream 401/403/404/429 to their codes and anything else to 502. They never pass the upstream body through.
-- Fixed: the catalog marked `GET me/home` as in the spec. The spec only has `PUT /me/home`, and the home page comes from `GET /me` (`homePath`).
+- Fixed: the catalog marked `GET user/home` as in the spec. The spec only has `PUT /user/home`, and the home page comes from `GET /user` (`homePath`).
 
-- `docs/openapi.yaml`: the pin endpoints (`GET`/`POST /me/pins`, `DELETE /me/pins/{pinId}`, `PUT /me/home`) now sit in their own **User Pinned** section. The rest of the old "Session, pins and search" section is now "Session and search" (`GET /me` session info and `GET /search`). Paths and operationIds are unchanged.
+- `docs/openapi.yaml`: the pin endpoints (`GET`/`POST /user/pins`, `DELETE /user/pins/{pinId}`, `PUT /user/home`) now sit in their own **User Pinned** section. The rest of the old "Session, pins and search" section is now "Session and search" (`GET /user` session info and `GET /search`).
 
 Blocked before mapping can start:
 
@@ -170,6 +170,23 @@ Feeds still needed for the demo and illustrative areas:
 | Match video, clips, key moments                                                        | Clip / video feed                   |
 | Exports list, Downloads count                                                          | Exports API                         |
 | Pool tables for the cups; standings by round                                           | EPCR standings; per-round standings |
+
+## User API and pins (9 Nov 2026)
+
+- Every `me` path in `docs/openapi.yaml` is now `user`: `GET /api/v1/user`, `GET`/`POST /api/v1/user/pins`, `DELETE /api/v1/user/pins/{pinId}`, `PUT /api/v1/user/home` (operationIds `get_user`, `get_user_pins`, …; schema `User`). The routing catalog and generated types follow.
+- The User Pinned endpoints are built (`app/api/v1/user/`) to the contract: 201/409/422 on pin, 204/404 on unpin, 422 when home isn't a pin, max 20 pins. **Temporary hold:** with no sign-in or database yet, pins and the home page live in a signed httpOnly cookie (`src/server/user-pins.ts`, key `HUB_COOKIE_SECRET`), so they persist per browser, not across devices. Only that module changes when Cognito and storage arrive.
+- The sidebar and Pin button read pins on the server and change them through the API, with optimistic updates that roll back on failure. Pins saved in the browser before this change are not carried over.
+
+## UI/UX pass (9 Nov 2026)
+
+- **Phones and tablets:** KPI strips go 2 → 3 → all columns; panels stack below the lg breakpoint; table panels scroll sideways (`Section minWidth`) with the league table's club column pinned; the Fixture Card becomes match cards with "Select assets"; tab rows fade at the edge; the match header stacks.
+- **Accessibility:** `faint` and sidebar-label colours meet 4.5:1; visible focus ring on every control; ARIA table semantics for the league table, Fixture Card and shared rows; spoken labels for W/L form and coloured scores; Search returns focus on close; the phone menu is a modal dialog. axe-core (WCAG 2 A/AA) reports no violations on the main pages.
+- **Unconnected actions** (reports, compare, publish, download, preview pack, clips, playlists) use `ComingSoonButton`: they look unavailable and say what they need.
+- **Data:** league table columns sort (with `aria-sort`); the Fixture Card's filters, search and date order, Home's day and the Stats measure live in the URL (`useUrlState`), so views can be shared; bars show value, average and rank on hover.
+- **States:** out of season, Home opens on the nearest matchday and says the season is complete; each section has a loading skeleton and an in-page error panel with Try again (shell and header stay).
+- **Payload:** the search index loads when Search first opens (`/api/hub/search-index`), and match pages name themselves in the breadcrumb, so the shell data sent with every page shrank by about 15 KB.
+
+Not done: pages are still rendered per request (the shell reads the hub clock and the pins cookie), so Competition, Team and Referee pages aren't cached yet.
 
 ## Next steps (from the build plan)
 

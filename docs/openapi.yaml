@@ -36,10 +36,10 @@ tags:
 - name: Oval Insights API
   description: Upstream AWS service, built by the AWS team. Not part of /api/v1.
 paths:
-  /api/v1/me:
+  /api/v1/user:
     get:
       summary: The signed-in user, their club, role, home page and current season.
-      operationId: get_me
+      operationId: get_user
       tags:
       - Session and search
       description: 'Used by: Shell footer, Home (P1), every "my club" default (replaces hard-coded Harlequins).
@@ -52,17 +52,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Me'
+                $ref: '#/components/schemas/User'
         '401':
           description: No or expired session
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/me/pins:
+  /api/v1/user/pins:
     get:
       summary: The user's pinned pages, in sidebar order.
-      operationId: get_me_pins
+      operationId: get_user_pins
       tags:
       - User Pinned
       description: 'Used by: Sidebar Pinned list.
@@ -92,7 +92,7 @@ paths:
                 $ref: '#/components/schemas/ApiError'
     post:
       summary: Pin a page.
-      operationId: post_me_pins
+      operationId: post_user_pins
       tags:
       - User Pinned
       description: 'Used by: Top-bar Pin button.
@@ -144,10 +144,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/me/pins/{pinId}:
+  /api/v1/user/pins/{pinId}:
     delete:
       summary: Unpin a page. Clears the home page if it was this pin.
-      operationId: delete_me_pins_pinId
+      operationId: delete_user_pins_pinId
       tags:
       - User Pinned
       description: 'Used by: Top-bar Pin button.
@@ -176,10 +176,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
-  /api/v1/me/home:
+  /api/v1/user/home:
     put:
       summary: Set or clear the page opened after sign-in.
-      operationId: put_me_home
+      operationId: put_user_home
       tags:
       - User Pinned
       description: 'Used by: Pinned list "Set as home".
@@ -3723,7 +3723,7 @@ components:
       - away
       - score
       additionalProperties: false
-    Me:
+    User:
       type: object
       properties:
         user:

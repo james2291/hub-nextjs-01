@@ -6,11 +6,10 @@
 import { ArrowRight } from "lucide-react";
 import NextLink from "next/link";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
+import { ComingSoonButton } from "@/components/oval/coming-soon";
 import { DataNote } from "@/components/oval/primitives";
 import { BENCH, STARTING } from "@/lib/positions";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type SquadPlayer = {
@@ -104,15 +103,9 @@ export function TeamSquad({
             <span className="text-amber">{picked} of 23 picked</span> · staff only
           </div>
         </div>
-        <Button
-          className="ml-auto"
-          disabled={!fixtureLabel}
-          onClick={() =>
-            toast(`${clubName} team sheet not published: team sheets aren't connected yet.`)
-          }
-        >
+        <ComingSoonButton variant="default" needs="team sheets" className="ml-auto">
           Publish team
-        </Button>
+        </ComingSoonButton>
       </div>
 
       {view === "selection" ? (
@@ -168,7 +161,7 @@ export function TeamSquad({
                   >
                     <span
                       className={cn(
-                        "grid size-[50px] place-items-center rounded-full text-[15px] font-semibold",
+                        "grid size-9 place-items-center rounded-full text-[13px] font-semibold sm:size-[50px] sm:text-[15px]",
                         player
                           ? "bg-white text-club"
                           : "border-2 border-dashed border-white/70 text-white",
@@ -177,7 +170,7 @@ export function TeamSquad({
                     >
                       {slot.number}
                     </span>
-                    <span className="whitespace-nowrap rounded-[2px] bg-ink/85 px-2 py-0.5 text-[11px] text-white">
+                    <span className="whitespace-nowrap rounded-[2px] bg-ink/85 px-2 py-0.5 text-[11px] text-white max-sm:hidden">
                       {player?.name ?? slot.label}
                     </span>
                   </button>
@@ -262,10 +255,7 @@ export function TeamSquad({
         </div>
       ) : (
         <section className="rounded border border-line bg-panel">
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_60px_80px_minmax(0,1fr)_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_60px_80px_minmax(0,1fr)_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span>Player</span>
             <span>Position</span>
             <span className="text-right">Apps</span>

@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/v1/me": {
+    "/api/v1/user": {
         parameters: {
             query?: never;
             header?: never;
@@ -17,7 +17,7 @@ export interface paths {
          *
          *     Access: Own data only (per user).
          */
-        get: operations["get_me"];
+        get: operations["get_user"];
         put?: never;
         post?: never;
         delete?: never;
@@ -26,7 +26,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/pins": {
+    "/api/v1/user/pins": {
         parameters: {
             query?: never;
             header?: never;
@@ -39,7 +39,7 @@ export interface paths {
          *
          *     Access: Own data only (per user).
          */
-        get: operations["get_me_pins"];
+        get: operations["get_user_pins"];
         put?: never;
         /**
          * Pin a page.
@@ -49,14 +49,14 @@ export interface paths {
          *
          *     Max 20 pins per user.
          */
-        post: operations["post_me_pins"];
+        post: operations["post_user_pins"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/pins/{pinId}": {
+    "/api/v1/user/pins/{pinId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -72,13 +72,13 @@ export interface paths {
          *
          *     Access: Own data only (per user).
          */
-        delete: operations["delete_me_pins_pinId"];
+        delete: operations["delete_user_pins_pinId"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/home": {
+    "/api/v1/user/home": {
         parameters: {
             query?: never;
             header?: never;
@@ -92,7 +92,7 @@ export interface paths {
          *
          *     Access: Own data only (per user).
          */
-        put: operations["put_me_home"];
+        put: operations["put_user_home"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1298,7 +1298,7 @@ export interface components {
                 [key: string]: components["schemas"]["AssetRef"] | null;
             };
         };
-        Me: {
+        User: {
             user: {
                 id: string;
                 name: string;
@@ -1575,7 +1575,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_me: {
+    get_user: {
         parameters: {
             query?: never;
             header?: never;
@@ -1590,7 +1590,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Me"];
+                    "application/json": components["schemas"]["User"];
                 };
             };
             /** @description No or expired session */
@@ -1604,7 +1604,7 @@ export interface operations {
             };
         };
     };
-    get_me_pins: {
+    get_user_pins: {
         parameters: {
             query?: never;
             header?: never;
@@ -1635,7 +1635,7 @@ export interface operations {
             };
         };
     };
-    post_me_pins: {
+    post_user_pins: {
         parameters: {
             query?: never;
             header?: never;
@@ -1689,7 +1689,7 @@ export interface operations {
             };
         };
     };
-    delete_me_pins_pinId: {
+    delete_user_pins_pinId: {
         parameters: {
             query?: never;
             header?: never;
@@ -1728,7 +1728,7 @@ export interface operations {
             };
         };
     };
-    put_me_home: {
+    put_user_home: {
         parameters: {
             query?: never;
             header?: never;

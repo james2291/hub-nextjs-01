@@ -99,13 +99,11 @@ export function CompetitionOverview({ slug }: { slug: string }) {
 
         <Section
           span={4}
+          minWidth={420}
           title={`${lastRoundLabel} results`}
           meta={lastRound[0] ? shortDay(lastRound[0].dateTime) : null}
         >
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span className="text-right">Home</span>
             <span />
             <span>Away</span>
@@ -150,18 +148,20 @@ export function CompetitionOverview({ slug }: { slug: string }) {
       </PanelGrid>
 
       <PanelGrid>
-        <Section span={5} title="Season leaders by club" meta="Standings feed">
+        <Section span={5} minWidth={460} title="Season leaders by club" meta="Standings feed">
           {standings ? (
             <Leaders rows={standings.rows} href={href} />
           ) : (
             <p className="px-4 py-6 text-mute">Needs a standings feed for this competition.</p>
           )}
         </Section>
-        <Section span={7} title="Biggest wins" meta={leagueStage ? "Regular season" : "Pool stage"}>
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[100px_minmax(0,1fr)_64px_minmax(0,1fr)_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+        <Section
+          span={7}
+          minWidth={560}
+          title="Biggest wins"
+          meta={leagueStage ? "Regular season" : "Pool stage"}
+        >
+          <div className="grid h-[30px] grid-cols-[100px_minmax(0,1fr)_64px_minmax(0,1fr)_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span>Round</span>
             <span className="text-right">Home</span>
             <span />
@@ -247,10 +247,7 @@ function TopFour({ rows, href }: { rows: StandingRow[]; href: (slug: string) => 
   const shown = rows.slice(0, 4).concat(mine && mine.position > 4 ? [mine] : []);
   return (
     <>
-      <div
-        role="row"
-        className="grid h-[30px] grid-cols-[24px_minmax(0,1fr)_40px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-      >
+      <div className="grid h-[30px] grid-cols-[24px_minmax(0,1fr)_40px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
         <span>#</span>
         <span>Club</span>
         <span className="text-right">Pts</span>
@@ -309,10 +306,7 @@ function Leaders({ rows, href }: { rows: StandingRow[]; href: (slug: string) => 
   ];
   return (
     <>
-      <div
-        role="row"
-        className="grid h-[30px] grid-cols-[190px_minmax(0,1fr)_50px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-      >
+      <div className="grid h-[30px] grid-cols-[190px_minmax(0,1fr)_50px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
         <span>Measure</span>
         <span>Club</span>
         <span />

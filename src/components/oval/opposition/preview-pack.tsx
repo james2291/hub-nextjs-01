@@ -3,8 +3,8 @@
 // "Build the preview pack" checklist and button (prototype Opposition). Exports aren't connected
 // yet, so building reports what was chosen.
 import { useState } from "react";
-import { toast } from "sonner";
 
+import { ComingSoonButton } from "@/components/oval/coming-soon";
 import { Button } from "@/components/ui/button";
 
 export function PreviewPack({ items }: { items: Array<{ title: string; detail: string }> }) {
@@ -36,17 +36,15 @@ export function PreviewPack({ items }: { items: Array<{ title: string; detail: s
         </label>
       ))}
       <div className="flex justify-end px-4 py-3">
-        <Button
-          variant="dark"
-          disabled={chosen.size === 0}
-          onClick={() =>
-            toast(
-              `Preview pack with ${chosen.size} ${chosen.size === 1 ? "section" : "sections"} queued. Exports aren't connected yet.`,
-            )
-          }
-        >
-          Build preview pack
-        </Button>
+        {chosen.size === 0 ? (
+          <Button variant="dark" disabled title="Choose what goes in the pack first">
+            Build preview pack
+          </Button>
+        ) : (
+          <ComingSoonButton variant="dark" needs="the exports API">
+            Build preview pack ({chosen.size})
+          </ComingSoonButton>
+        )}
       </div>
     </>
   );

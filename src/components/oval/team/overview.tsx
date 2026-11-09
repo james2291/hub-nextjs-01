@@ -160,7 +160,7 @@ export function TeamOverview({ slug }: { slug: string }) {
 
       {row && standings && (
         <PanelGrid>
-          <Section span={8} title="Against the league" meta="Gallagher PREM 2025/26">
+          <Section span={8} minWidth={620} title="Against the league" meta="Gallagher PREM 2025/26">
             <AgainstLeague
               measures={leagueMeasures(row, standings.rows)}
               clubShort={club.shortName}
@@ -181,15 +181,13 @@ export function TeamOverview({ slug }: { slug: string }) {
         {cup && (
           <Section
             span={roster.length ? 6 : 12}
+            minWidth={420}
             title={cup.name}
             meta={[...pools, stage && stage !== "Pool stage" ? stage.toLowerCase() : null]
               .filter(Boolean)
               .join(" and ")}
           >
-            <div
-              role="row"
-              className="grid h-[30px] grid-cols-[70px_minmax(0,1fr)_24px_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-            >
+            <div className="grid h-[30px] grid-cols-[70px_minmax(0,1fr)_24px_60px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
               <span>Date</span>
               <span>Round</span>
               <span />
@@ -219,10 +217,7 @@ export function TeamOverview({ slug }: { slug: string }) {
             title="Key players"
             meta={<span className="font-mono text-[11px] font-medium text-club">DEMO DATA</span>}
           >
-            <div
-              role="row"
-              className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_50px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-            >
+            <div className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_50px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
               <span>Player</span>
               <span>Position</span>
               <span className="text-right">Apps</span>
@@ -264,7 +259,6 @@ function AgainstLeague({
   return (
     <>
       <div
-        role="row"
         className="grid h-[30px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
         style={{ gridTemplateColumns: columns }}
       >
@@ -287,7 +281,10 @@ function AgainstLeague({
             style={{ gridTemplateColumns: columns }}
           >
             <span className="truncate">{measure.label}</span>
-            <span className="relative block h-3.5">
+            <span
+              className="relative block h-3.5"
+              title={`${measure.label}: ${measure.value.toFixed(measure.decimals)}, league average ${measure.league.toFixed(1)}, ${ordinal(measure.rank)} of ${total}`}
+            >
               <span className="absolute inset-x-0 top-1.5 h-0.5 bg-line2" />
               <span
                 className="absolute left-0 top-1 h-1.5 bg-ink"
@@ -325,10 +322,7 @@ function AgainstLeague({
 function ResultsTable({ fixtures, club }: { fixtures: Fixture[]; club: string }) {
   return (
     <>
-      <div
-        role="row"
-        className="grid h-[30px] grid-cols-[60px_minmax(0,1fr)_20px_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-      >
+      <div className="grid h-[30px] grid-cols-[60px_minmax(0,1fr)_20px_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
         <span>Date</span>
         <span>Opponent</span>
         <span />

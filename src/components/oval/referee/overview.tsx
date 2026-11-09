@@ -111,13 +111,11 @@ export function RefereeOverview({ slug }: { slug: string }) {
       <PanelGrid>
         <Section
           span={8}
+          minWidth={640}
           title="Recent appointments"
           meta={<PanelLink href={`/referees/${slug}/fixtures`}>Fixture Card</PanelLink>}
         >
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[70px_minmax(0,1.3fr)_minmax(0,1.1fr)_60px_80px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[70px_minmax(0,1.3fr)_minmax(0,1.1fr)_60px_80px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span>Date</span>
             <span>Match</span>
             <span>Competition</span>

@@ -210,7 +210,7 @@ export function MatchOverview({ fixture, played }: { fixture: Fixture; played: b
                   <span className="grid size-[26px] place-items-center rounded-full bg-white text-xs font-semibold text-club">
                     {slot.number}
                   </span>
-                  <span className="whitespace-nowrap rounded-[2px] bg-ink/85 px-1.5 text-[11px] text-white">
+                  <span className="whitespace-nowrap rounded-[2px] bg-ink/85 px-1.5 text-[11px] text-white max-sm:hidden">
                     {named.get(slot.number) ?? slot.label}
                   </span>
                 </span>

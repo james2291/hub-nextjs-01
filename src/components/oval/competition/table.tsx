@@ -63,6 +63,7 @@ export function CompetitionTable({ slug }: { slug: string }) {
       <PanelGrid>
         <Section
           span={9}
+          minWidth={780}
           title={`${competition.name} 2025/26`}
           meta={`Top ${standings.playOffPlaces} go to the play-offs`}
         >

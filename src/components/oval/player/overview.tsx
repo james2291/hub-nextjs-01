@@ -53,13 +53,11 @@ export function PlayerOverview({ slug }: { slug: string }) {
       <PanelGrid>
         <Section
           span={8}
+          minWidth={600}
           title={club ? `${possessive(club.name)} recent matches` : "Recent matches"}
           meta={<PanelLink href={`/players/${slug}/fixtures`}>Fixture Card</PanelLink>}
         >
-          <div
-            role="row"
-            className="grid h-[30px] grid-cols-[70px_minmax(0,1.1fr)_minmax(0,1.2fr)_20px_56px_110px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"
-          >
+          <div className="grid h-[30px] grid-cols-[70px_minmax(0,1.1fr)_minmax(0,1.2fr)_20px_56px_110px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute">
             <span>Date</span>
             <span>Opponent</span>
             <span>Competition</span>

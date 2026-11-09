@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import { entityHref, entityNavigation, type EntityKind } from "@/components/oval/entity-navigation";
+import { ACTION_NEEDS, ComingSoonButton } from "@/components/oval/coming-soon";
 import { Crest, PlainCrest } from "@/components/oval/primitives";
-import { Button } from "@/components/ui/button";
 import type { Competition, Player, Referee, Team } from "@/data/hub";
 import { cn } from "@/lib/utils";
 import type { EntityHeaderData } from "@/server/entities";
@@ -76,13 +76,16 @@ export function EntityHeader({ header }: { header: EntityHeaderData }) {
         </div>
         <div className="flex gap-2">
           {header.actions.map((action) => (
-            <Button key={action} variant="outline" type="button">
+            <ComingSoonButton key={action} needs={ACTION_NEEDS[action] ?? "its API"}>
               {action}
-            </Button>
+            </ComingSoonButton>
           ))}
         </div>
       </div>
-      <nav aria-label={`${header.title} sections`} className="mt-3 flex gap-[22px] overflow-x-auto">
+      <nav
+        aria-label={`${header.title} sections`}
+        className="mt-3 flex gap-[22px] overflow-x-auto max-md:pr-8 max-md:[mask-image:linear-gradient(to_right,black_80%,transparent)]"
+      >
         {entityNavigation[header.kind].map((tab) => {
           const href = entityHref(header.kind, header.id, tab.slug);
           const active =
