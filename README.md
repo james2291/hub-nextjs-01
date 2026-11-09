@@ -3,9 +3,10 @@
 Oval Hub v2 prototype, ported from TanStack Start (Lovable) to **Next.js 16.4.5 App Router**. Same pages, same URLs, same look.
 
 > **Temporary holds.** Three parts of this codebase stand in for APIs that aren't built yet:
+>
 > - **Data:** pages read static data from `src/data/hub.ts` until the Hub API (`docs/openapi.yaml`) is built.
 > - **AI insights:** `POST /api/v1/insights` returns labelled placeholder text until the AWS Oval Insights API is live. Set `INSIGHTS_API_URL` to switch it on; no other code changes.
-> - **Upstream routing:** `GET /api/v1/*` passes Oval Hub v2 upstream payloads through unchanged (`contract: "upstream-passthrough"`) until each endpoint is reshaped to `docs/openapi.yaml`. Pages don't call it yet.
+> - **Upstream routing:** `GET /api/v1/*` passes Oval Hub v2 upstream payloads through unchanged (`contract: "upstream-passthrough"`) until each endpoint gets a reshaper in `src/server/contract/reshape.ts`, which switches it to its `docs/openapi.yaml` body. Pages don't call it yet.
 >
 > AI text is generated and stored by the AWS Oval Insights API; the Hub only reads it.
 
@@ -17,6 +18,9 @@ cp .env.example .env.local   # INSIGHTS_API_URL / INSIGHTS_API_KEY, or leave emp
 npm run dev                  # http://localhost:3000
 npm run build && npm start   # production
 npm run typecheck && npm run lint
+npm run check:routing        # v2 call map
+npm run check:contract       # catalog vs spec, reshapers vs captured fixtures
+npm run gen:api              # regenerate src/api/openapi.d.ts after editing docs/openapi.yaml
 ```
 
 With no environment variables set, every page works and AI insight cards show labelled placeholder text. Upstream routes answer 503 until `OVAL_API_GATEWAY_URL` is set.
@@ -63,18 +67,18 @@ docs/openapi.yaml            API spec for every endpoint not yet built (OpenAPI 
 
 ## What changed in the port
 
-| TanStack Start | Next.js |
-| --- | --- |
-| `src/routes/*.tsx` file routes (27) | `app/**/page.tsx` + `layout.tsx` |
-| `head()` | `metadata` / `generateMetadata()` |
-| `beforeLoad` + `redirect()` | `redirect()` in server pages; fixed URL in `next.config.ts` |
-| `<Outlet />` in entity/match layouts | `children` in `layout.tsx` |
-| `<Link to params search activeProps>` | `@/lib/link` renders `next/link` with the same props (47 call sites unchanged) |
-| `useRouterState`, `useNavigate` | `usePathname`, `useSearchParams`, `useRouter` |
-| `createServerFn` + `useServerFn` (Lovable AI + cache table) | `POST /api/v1/insights` route handler reading the AWS Oval Insights API |
-| `import.meta.env.VITE_*` keys | Removed; only `INSIGHTS_API_URL` / `INSIGHTS_API_KEY` (server-only) |
-| `import img from "@/assets/x.jpg"` | `"/assets/x.jpg"` from `public/` |
-| Vite + `@lovable.dev/vite-tanstack-config` | Next.js + `@tailwindcss/postcss` (Tailwind 4 unchanged) |
+| TanStack Start                                              | Next.js                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/routes/*.tsx` file routes (27)                         | `app/**/page.tsx` + `layout.tsx`                                               |
+| `head()`                                                    | `metadata` / `generateMetadata()`                                              |
+| `beforeLoad` + `redirect()`                                 | `redirect()` in server pages; fixed URL in `next.config.ts`                    |
+| `<Outlet />` in entity/match layouts                        | `children` in `layout.tsx`                                                     |
+| `<Link to params search activeProps>`                       | `@/lib/link` renders `next/link` with the same props (47 call sites unchanged) |
+| `useRouterState`, `useNavigate`                             | `usePathname`, `useSearchParams`, `useRouter`                                  |
+| `createServerFn` + `useServerFn` (Lovable AI + cache table) | `POST /api/v1/insights` route handler reading the AWS Oval Insights API        |
+| `import.meta.env.VITE_*` keys                               | Removed; only `INSIGHTS_API_URL` / `INSIGHTS_API_KEY` (server-only)            |
+| `import img from "@/assets/x.jpg"`                          | `"/assets/x.jpg"` from `public/`                                               |
+| Vite + `@lovable.dev/vite-tanstack-config`                  | Next.js + `@tailwindcss/postcss` (Tailwind 4 unchanged)                        |
 
 Removed: `src/router.tsx`, `src/start.ts`, `src/server.ts`, `routeTree.gen.ts`, Lovable error capture, the Lovable AI gateway and the prototype's backend client. Sign-in is proposed as AWS Cognito, added in `proxy.ts` when it's built (plan Phase 0).
 
@@ -112,6 +116,26 @@ Team availability is out of scope. Removed: the Home Availability panel, the "Sq
 ## Next.js security update (9 Nov 2026)
 
 `next` and `eslint-config-next` upgraded from 16.4.0 to 16.4.5: `next build` on 16.4.0 now stops with a known-vulnerability warning. Build, typecheck and lint pass on 16.4.5.
+
+## Contract layer (9 Nov 2026)
+
+Groundwork for reshaping the 33 routed spec endpoints (the "Map v2 source" set) onto `docs/openapi.yaml`. No endpoint is reshaped yet: there are no captured v2 payloads to map from, and field names are not guessed.
+
+- `src/api/openapi.d.ts` is generated from the spec (`npm run gen:api`). A reshaper's return type is the operation's 200 body, so a wrong field name fails `tsc`.
+- `src/server/contract/reshape.ts` holds reshapers by operationId. With one present, the route returns the contract body. If any upstream call fails, the route returns an `ApiError` instead. Without one, the route stays pass-through.
+- `scripts/check-contract.ts` checks that every `spec: true` catalog route exists in the spec with the derived operationId, and that every reshaper has a routed spec route. It then runs each fixture in `fixtures/upstream/<operationId>/` through its reshaper and validates the result against the 200 schema (Ajv, JSON Schema 2020-12). See `fixtures/upstream/README.md` to capture one.
+- `GET /api/v1/routing` now gives each route's `operationId` and `contract`, plus `progress` (33 routed spec endpoints, 0 reshaped).
+- Pass-through bodies now include `request.params` / `request.query`, so a saved response is a complete fixture.
+- Fixed: error bodies now match `ApiError`. The no-v2-source 501 used `code: "not_implemented"` (not in the enum) plus a top-level `hub` key (`additionalProperties: false`). It now sends `upstream_unavailable` with `details.reason: "no_v2_source"`. Reshaped endpoints map upstream 401/403/404/429 to their codes and anything else to 502. They never pass the upstream body through.
+- Fixed: the catalog marked `GET me/home` as in the spec. The spec only has `PUT /me/home`, and the home page comes from `GET /me` (`homePath`).
+
+- `docs/openapi.yaml`: the pin endpoints (`GET`/`POST /me/pins`, `DELETE /me/pins/{pinId}`, `PUT /me/home`) now sit in their own **User Pinned** section. The rest of the old "Session, pins and search" section is now "Session and search" (`GET /me` session info and `GET /search`). Paths and operationIds are unchanged.
+
+Blocked before mapping can start:
+
+1. **Upstream payloads.** Run with `OVAL_API_GATEWAY_URL` and a Cognito id token, then capture each endpoint into `fixtures/upstream/`.
+2. **Hub id → RugbyViz id.** The spec takes slugs (`gallagher-prem`), but upstreams need numeric ids, so `/competitions/gallagher-prem/standings` answers 422 today. A slug ↔ `compId`/`teamId`/`playerId`/`officialId` source is needed (likely `list-competitions` / `returnteams` / `returnofficials`; confirm from payloads).
+3. **Current season default.** The spec defaults `season` to the current season. The catalog needs it passed explicitly.
 
 ## Next steps (from the build plan)
 
