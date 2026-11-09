@@ -2,7 +2,7 @@
 // HUB_NOW=2026-05-16T14:30:00+01:00 to match the design screenshots. Read on the server and pass
 // the ISO string to client components so server and client agree.
 export function hubNow(): Date {
-  const override = process.env.HUB_NOW;
+  const override = process.env["HUB_NOW"];
   if (override) {
     const date = new Date(override);
     if (!Number.isNaN(date.getTime())) return date;
