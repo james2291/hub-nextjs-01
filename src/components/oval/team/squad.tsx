@@ -6,11 +6,10 @@
 import { ArrowRight } from "lucide-react";
 import NextLink from "next/link";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
+import { ComingSoonButton } from "@/components/oval/coming-soon";
 import { DataNote } from "@/components/oval/primitives";
 import { BENCH, STARTING } from "@/lib/positions";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type SquadPlayer = {
@@ -104,15 +103,9 @@ export function TeamSquad({
             <span className="text-amber">{picked} of 23 picked</span> · staff only
           </div>
         </div>
-        <Button
-          className="ml-auto"
-          disabled={!fixtureLabel}
-          onClick={() =>
-            toast(`${clubName} team sheet not published: team sheets aren't connected yet.`)
-          }
-        >
+        <ComingSoonButton variant="default" needs="team sheets" className="ml-auto">
           Publish team
-        </Button>
+        </ComingSoonButton>
       </div>
 
       {view === "selection" ? (

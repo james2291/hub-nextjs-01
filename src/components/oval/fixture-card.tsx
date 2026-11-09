@@ -6,9 +6,9 @@
 import { ArrowRight, Download, RotateCcw, Search } from "lucide-react";
 import NextLink from "next/link";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
 import { useClubHref } from "@/components/oval/app-shell";
+import { ComingSoonButton } from "@/components/oval/coming-soon";
 import { withCellRoles } from "@/components/oval/primitives";
 import { Button } from "@/components/ui/button";
 import { recordFor, resultFor, ukDate, ukTime, type Fixture, type ResultLetter } from "@/lib/rugby";
@@ -183,19 +183,21 @@ export function FixtureCard({
           <RotateCcw className="size-3.5" />
           Clear
         </Button>
-        <Button
-          aria-disabled={selected.size === 0}
-          disabled={selected.size === 0}
-          onClick={() =>
-            toast(
-              `${selected.size} ${selected.size === 1 ? "file" : "files"} selected for download. Exports aren't connected yet.`,
-            )
-          }
-          className="px-3.5 disabled:bg-[#B8B8B2] disabled:opacity-100"
-        >
-          <Download className="size-3.5" />
-          {selected.size ? `Download ${selected.size}` : "Download"}
-        </Button>
+        {selected.size === 0 ? (
+          <Button
+            disabled
+            title="Tick the assets you need first"
+            className="px-3.5 disabled:bg-[#B8B8B2] disabled:opacity-100"
+          >
+            <Download className="size-3.5" />
+            Download
+          </Button>
+        ) : (
+          <ComingSoonButton variant="default" needs="the exports API" className="px-3.5">
+            <Download className="size-3.5" />
+            Download {selected.size}
+          </ComingSoonButton>
+        )}
       </div>
 
       {/* Phones: one card per match; asset ticks behind "Select assets". */}
