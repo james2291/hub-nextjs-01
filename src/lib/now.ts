@@ -9,3 +9,8 @@ export function hubNow(): Date {
   }
   return new Date();
 }
+
+/** A match counts as played two hours after kick-off (the feeds have no live state). */
+export function isPlayed(kickOff: string, now: Date = hubNow()): boolean {
+  return now.getTime() >= new Date(kickOff).getTime() + 2 * 60 * 60 * 1000;
+}

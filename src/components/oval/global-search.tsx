@@ -92,7 +92,6 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  let lastType: SearchType | null = null;
   return (
     <div className="fixed inset-0 z-50" onKeyDown={onKeyDown}>
       <div className="absolute inset-0 bg-[rgba(17,24,39,0.45)]" onClick={onClose} />
@@ -162,8 +161,9 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
           )}
           {results.map((item, position) => {
             const heading =
-              item.type !== lastType ? TABS.find((t) => t.key === item.type)?.group : null;
-            lastType = item.type;
+              results[position - 1]?.type !== item.type
+                ? TABS.find((t) => t.key === item.type)?.group
+                : null;
             const Icon = ICONS[item.type];
             return (
               <div key={`${item.type}-${item.id}`}>

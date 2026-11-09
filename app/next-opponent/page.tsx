@@ -1,12 +1,12 @@
-// Next fixture changes over time; resolve per request rather than at build.
-export const dynamic = "force-dynamic";
-
 import { redirect } from "next/navigation";
 
-import { getNextFixture } from "@/data/hub";
+import { CURRENT_USER } from "@/lib/user";
+import { nextOpponentSlug } from "@/server/links";
 
-// Server-side redirect to the next opponent's Head-to-head tab (was TanStack beforeLoad).
+// The next opponent depends on the hub clock, so resolve per request.
+export const dynamic = "force-dynamic";
+
 export default function NextOpponentPage() {
-  const next = getNextFixture("harlequins");
-  redirect(`/teams/${next?.opponent?.id ?? "bath-rugby"}/head-to-head`);
+  const slug = nextOpponentSlug();
+  redirect(slug ? `/opposition/${slug}` : `/teams/${CURRENT_USER.clubSlug}/fixtures`);
 }

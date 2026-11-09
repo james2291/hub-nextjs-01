@@ -8,7 +8,7 @@ import {
   legacyTab,
 } from "@/components/oval/entity-navigation";
 import { EntityFixtureCard } from "@/components/oval/entity-fixture-card";
-import { LegacyTabContent } from "@/components/oval/entity-tabs";
+import { PlayerStats } from "@/components/oval/player/stats";
 import { playerHeader } from "@/server/entities";
 
 type Params = Promise<{ playerId: string; tab: string }>;
@@ -26,5 +26,5 @@ export default async function PlayerTabPage({ params }: { params: Params }) {
   if (replacement !== undefined) redirect(entityHref("player", playerId, replacement));
   if (!isEntityTab("player", tab)) notFound();
   if (tab === "fixtures") return <EntityFixtureCard kind="player" id={playerId} />;
-  return <LegacyTabContent tab={tab} />;
+  return <PlayerStats slug={playerId} />;
 }

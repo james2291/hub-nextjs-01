@@ -13,5 +13,5 @@ export function nextOpponentSlug(): string | null {
 /** Returns a function: club slug → that team's Overview, or Next opponent for the next opponent. */
 export function clubHrefs(): (slug: string) => string {
   const next = nextOpponentSlug();
-  return (slug: string) => (slug === next ? "/next-opponent" : `/teams/${slug}`);
+  return (slug: string) => (slug === next ? `/opposition/${slug}` : `/teams/${slug}`);
 }

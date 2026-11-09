@@ -1,20 +1,30 @@
-import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 
-import { getMatch } from "@/lib/matches";
-import { MatchView } from "@/views/match";
+import { MatchStats } from "@/components/oval/match/stats";
+import { MatchVideo } from "@/components/oval/match/video";
+import { isPlayed } from "@/lib/now";
+import { getMatch, SEASON } from "@/server/feeds";
 
-type Params = Promise<{ matchId: string; tab: string }>;
+// Tabs from the prototype's 7-tab match workspace, mapped onto Overview / Video / Stats.
+const LEGACY: Record<string, string> = {
+  overview: "",
+  lineups: "",
+  "player-data": "stats",
+  reports: "video",
+  "files-feeds": "video",
+};
 
-export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+export default async function MatchTabPage({
+  params,
+}: {
+  params: Promise<{ matchId: string; tab: string }>;
+}) {
   const { matchId, tab } = await params;
-  const match = getMatch(matchId);
-  const label = tab.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-  const title = `${match?.fixture.fixture ?? "Match"} · ${label} | Oval Hub`;
-  const description = `${label} workspace for ${match?.fixture.fixture ?? "the selected match"}.`;
-  return { title, description, openGraph: { title, description, type: "website" }, twitter: { card: "summary_large_image" } };
-}
-
-export default async function MatchTabPage({ params }: { params: Params }) {
-  const { matchId, tab } = await params;
-  return <MatchView matchId={matchId} tab={tab} />;
+  const fixture = getMatch(matchId);
+  if (!fixture) notFound();
+  const legacy = LEGACY[tab];
+  if (legacy !== undefined) redirect(`/matches/${matchId}${legacy ? `/${legacy}` : ""}`);
+  if (tab === "video") return <MatchVideo fixture={fixture} season={SEASON.key} />;
+  if (tab === "stats") return <MatchStats fixture={fixture} played={isPlayed(fixture.dateTime)} />;
+  notFound();
 }

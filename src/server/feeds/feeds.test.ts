@@ -11,6 +11,7 @@ import {
   getReferee,
   getStandings,
   homeVenueOf,
+  rankInStandings,
   standingOf,
 } from "@/server/feeds";
 import {
@@ -154,6 +155,14 @@ describe("derived figures", () => {
       ),
     ).toBeGreaterThan(0);
     expect(rankOf(5, [5, 5, 3])).toBe(1);
+  });
+  it("ties on a measure are broken by league position", () => {
+    const rows = getStandings("gallagher-prem")?.rows ?? [];
+    expect(rankInStandings(rows, "harlequins", (row) => row.triesFor)).toBe(9);
+    expect(rankInStandings(rows, "harlequins", (row) => row.triesAgainst, true)).toBe(9);
+    expect(rankInStandings(rows, "harlequins", (row) => row.pointsFor)).toBe(8);
+    expect(rankInStandings(rows, "harlequins", (row) => row.pointsAgainst, true)).toBe(8);
+    expect(rankInStandings(rows, "harlequins", (row) => row.pointsDiff)).toBe(8);
   });
   it("missing score: Cheetahs v Ulster, 11 Jan, Challenge Cup", () => {
     const game = getMatch(288450);
