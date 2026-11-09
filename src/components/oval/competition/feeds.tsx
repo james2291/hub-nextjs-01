@@ -65,8 +65,8 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
   return (
     <PageBody>
       <div className="rounded bg-subtle px-4 py-3 text-[13px] text-[#55554F]">
-        Feeds is shown to analysts only. It replaces Live XML: raw event files per match, plus
-        exports.
+        Feeds is shown to analysts only: Live XML and raw event files per match, plus exports. Every
+        fixture also has Live XML in the Match Centre and on the Fixture Card.
       </div>
       <Section
         minWidth={640}
@@ -74,14 +74,14 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
         meta={round[0]?.round.replace(/ · R(\d+)$/, " round $1") ?? ""}
       >
         <div className="px-4 pb-3">
-          <div className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_repeat(3,minmax(0,0.6fr))] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute">
+          <div className="grid h-[30px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_repeat(4,minmax(0,0.6fr))] items-center gap-2.5 border-b border-line2 text-[11px] font-medium text-mute">
             <span>Match</span>
             <span>Round</span>
           </div>
           {round.map((fixture) => (
             <div
               key={fixture.id}
-              className="grid min-h-[49px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_repeat(3,minmax(0,0.6fr))] items-center gap-2.5 border-b border-line2 last:border-b-0"
+              className="grid min-h-[49px] grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_repeat(4,minmax(0,0.6fr))] items-center gap-2.5 border-b border-line2 last:border-b-0"
             >
               <NextLink href={`/matches/${fixture.id}`} className="truncate hover:underline">
                 {fixture.home.club.name} v {fixture.away.club.name}
@@ -90,10 +90,13 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
                 {fixture.round} · {ukDayMonth(fixture.dateTime)}{" "}
                 {new Date(fixture.dateTime).getUTCFullYear()}
               </span>
-              <a href={`/api/v1/matches/${fixture.id}/download/xml`} className={button}>
+              <a href={`/api/v1/matches/${fixture.id}/live-xml?download=1`} className={button}>
+                Live XML
+              </a>
+              <a href={`/api/v1/matches/${fixture.id}/download/xml?download=1`} className={button}>
                 Event XML
               </a>
-              <a href={`/api/v1/matches/${fixture.id}/download/csv`} className={button}>
+              <a href={`/api/v1/matches/${fixture.id}/download/csv?download=1`} className={button}>
                 Event CSV
               </a>
               <NextLink href={`/matches/${fixture.id}/video`} className={button}>

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import { isMiss, reshaperFor } from "@/server/contract/reshape";
@@ -54,6 +56,49 @@ function upstreamFailure(failed: UpstreamCallResult) {
   return apiError(502, "upstream_unavailable", "Upstream request failed.", details);
 }
 
+/**
+ * Routes whose response is a file. matches/:matchId/live-xml is the contract endpoint
+ * (docs/openapi.yaml: application/xml, ETag, 304, no-store); download/:kind serves the v2 event
+ * files. Add ?download=1 to save the body as a file.
+ */
+const FILE_ROUTES = new Set(["matches/:matchId/live-xml", "matches/:matchId/download/:kind"]);
+
+const FILE_TYPES: Record<string, { type: string; ext: string }> = {
+  xml: { type: "application/xml; charset=utf-8", ext: "xml" },
+  csv: { type: "text/csv; charset=utf-8", ext: "csv" },
+  superscout: { type: "application/xml; charset=utf-8", ext: "xml" },
+  events: { type: "application/json; charset=utf-8", ext: "json" },
+};
+
+function fileResponse(
+  request: Request,
+  call: UpstreamCallResult | undefined,
+  params: Record<string, string>,
+  segments: string[],
+  query: URLSearchParams,
+) {
+  const kind = segments.at(-1) === "live-xml" ? "live-xml" : (params["kind"] ?? "xml");
+  const format = kind === "live-xml" ? FILE_TYPES["xml"] : (FILE_TYPES[kind] ?? FILE_TYPES["xml"]);
+  const data = call?.data;
+  const body = typeof data === "string" ? data : JSON.stringify(data ?? null, null, 2);
+  const etag = `"${createHash("sha256").update(body).digest("base64url").slice(0, 27)}"`;
+  const headers: Record<string, string> = {
+    "Content-Type": format?.type ?? "application/octet-stream",
+    "Cache-Control": "no-store",
+    ETag: etag,
+  };
+  if (query.get("download") === "1") {
+    const name =
+      kind === "live-xml"
+        ? `${params["matchId"]}-live.xml`
+        : `${params["matchId"]}-events.${format?.ext ?? "dat"}`;
+    headers["Content-Disposition"] = `attachment; filename="${name}"`;
+  }
+  if (request.headers.get("if-none-match") === etag)
+    return new Response(null, { status: 304, headers });
+  return new Response(body, { status: 200, headers });
+}
+
 export async function GET(request: Request, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
   const segments = path.map((segment) => {
@@ -92,6 +137,12 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
     return apiError(502, "upstream_unavailable", "Upstream request failed.");
   }
   const failed = calls.find((item) => item.status < 200 || item.status >= 300);
+
+  // File endpoints: the upstream body is the response (XML/CSV), not a JSON envelope.
+  if (FILE_ROUTES.has(resolved.pattern)) {
+    if (failed) return upstreamFailure(failed);
+    return fileResponse(request, calls[0], resolved.params, segments, query);
+  }
 
   const reshape = reshaperFor(resolved.pattern);
   if (reshape) {

@@ -14,7 +14,12 @@ import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020";
 import { parse } from "yaml";
 
-import { isMiss, operationIdFor, reshapers } from "../src/server/contract/reshape";
+import {
+  fileContractRoutes,
+  isMiss,
+  operationIdFor,
+  reshapers,
+} from "../src/server/contract/reshape";
 import { hubRoutes } from "../src/server/upstream/catalog";
 import type { UpstreamCallResult } from "../src/server/upstream/client.server";
 
@@ -125,7 +130,9 @@ for (const id of dirs) {
   }
 }
 
-const reshaped = routedSpec.filter((route) => operationIdFor(route.pattern) in reshapers).length;
+const reshaped = routedSpec.filter(
+  (route) => operationIdFor(route.pattern) in reshapers || fileContractRoutes.has(route.pattern),
+).length;
 console.log(
   `Routed spec endpoints: ${routedSpec.length}. Reshaped to the contract: ${reshaped}. Still pass-through: ${routedSpec.length - reshaped}.`,
 );

@@ -188,6 +188,14 @@ Feeds still needed for the demo and illustrative areas:
 
 Not done: pages are still rendered per request (the shell reads the hub clock and the pins cookie), so Competition, Team and Referee pages aren't cached yet.
 
+## Match Centre and Live XML (9 Nov 2026)
+
+- **Competition → Match Centre** (`/competitions/{id}/match-centre`): a fixture browser (completed/upcoming, team, round; `?match=` selects a fixture) and, for the selected fixture, Summary, Lineups, Kicking, Quarters, Player data and Live XML views. Score and match facts come from the fixtures feed; the views read the Hub's v2 routes (`/api/v1/matches/{id}/stats`, `/lineups`, `/player-stats`, `/live-xml`), the same RugbyViz widgets the v2 Match Centre used (catalogued in `src/server/upstream/catalog.ts`). Until those responses are reshaped, the views lay out the v2 payload generically and say so.
+- **Every fixture** has a Live XML download and a Match Centre link on the Fixture Card (all entity pages, desktop and phone), and in the Match Centre and Feeds.
+- **`GET /api/v1/matches/{matchId}/live-xml` meets its contract:** `application/xml`, `ETag`, `304` on `If-None-Match`, `Cache-Control: no-store`; add `?download=1` to save `{matchId}-live.xml`. Event XML/CSV (`download/{kind}`) are served as files the same way.
+- Without `OVAL_API_GATEWAY_URL` the views say the data service isn't connected. The wiring was tested end to end against a local mock of the gateway.
+- The prototype zip supplied for reference had no APIs (static demo data); it was used only for the Match Centre's layout and views. Discipline and Turnovers from the prototype need v2 parameters (event ids) that aren't in the catalogue yet, so they're not shown.
+
 ## Next steps (from the build plan)
 
 1. Reshape each `/api/v1/*` pass-through response to its `docs/openapi.yaml` schema (`GET /api/v1/routing` lists them).

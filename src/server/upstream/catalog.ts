@@ -8,7 +8,7 @@
 // Responses are the upstream payloads unless src/server/contract/reshape.ts has a reshaper for the
 // route's operationId, in which case the route answers with the docs/openapi.yaml body.
 
-import { operationIdFor, reshaperFor } from "@/server/contract/reshape";
+import { fileContractRoutes, operationIdFor, reshaperFor } from "@/server/contract/reshape";
 
 export type UpstreamChannel = "rugbyviz" | "rugbyviz-direct" | "aws" | "xeatre";
 
@@ -635,7 +635,7 @@ export function listHubRoutes() {
     ...(route.spec ? { operationId: operationIdFor(route.pattern) } : {}),
     spec: route.spec,
     status: route.status,
-    contract: route.status === "routed" && reshaperFor(route.pattern) ? "openapi" : route.status === "routed" ? "upstream-passthrough" : "none",
+    contract: route.status === "routed" && (reshaperFor(route.pattern) || fileContractRoutes.has(route.pattern)) ? "openapi" : route.status === "routed" ? "upstream-passthrough" : "none",
     upstream: route.upstream,
     ...(route.status === "no-v2-source" ? { gap: route.gap } : {}),
   }));
