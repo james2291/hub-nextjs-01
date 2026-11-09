@@ -88,7 +88,9 @@ export function getShellData(): ShellData {
       roleLabel: CURRENT_USER.roleLabel,
     },
     nextOpponent:
-      next && opponent ? { label: placeName(opponent.name), href: "/next-opponent" } : null,
+      next && opponent
+        ? { label: placeName(opponent.name), href: `/opposition/${opponent.slug}` }
+        : null,
     nextOpponentSlug: opponent?.slug ?? null,
     clubSlug: club,
     latestMatch: latest ? { label: matchLabel(latest, club), href: `/matches/${latest.id}` } : null,

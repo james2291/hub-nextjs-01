@@ -289,8 +289,10 @@ const SECTION_ROOTS: Record<string, string> = {
 
 function buildBreadcrumb(pathname: string, data: ShellData): Crumb[] {
   if (pathname === "/") return [{ label: data.user.clubName }, { label: "Home" }];
-  if (pathname.startsWith("/opposition/"))
-    return [{ label: data.user.clubName, href: "/" }, { label: "Next opponent" }];
+  if (pathname.startsWith("/opposition/")) {
+    const slug = pathname.split("/")[2] ?? "";
+    return [{ label: "Next opponent" }, { label: data.names[slug] ?? slug }];
+  }
   const parts = pathname.split("/").filter(Boolean);
   const crumbs: Crumb[] = [];
   let href = "";

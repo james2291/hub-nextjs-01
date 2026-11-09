@@ -5,7 +5,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
-      { source: "/competitions/:competitionId/match/:matchId", destination: "/matches/:matchId/overview", permanent: false },
+      {
+        source: "/competitions/:competitionId/match/:matchId",
+        destination: "/matches/:matchId",
+        permanent: false,
+      },
     ];
   },
 };
