@@ -5,7 +5,7 @@ import { Download } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { readHomePin } from "@/lib/pins";
 
-import { AppShell, Panel, StatStrip } from "@/components/oval/app-shell";
+import { PageBody, Panel, StatStrip } from "@/components/oval/app-shell";
 import { Button } from "@/components/ui/button";
 import { getNextFixture, getTeam } from "@/data/hub";
 import { cn } from "@/lib/utils";
@@ -19,11 +19,11 @@ export function HomeView() {
   }, []);
   const team = getTeam("harlequins");
   const next = getNextFixture("harlequins");
-  if (!team || !next) return <AppShell><Panel className="p-8">Next fixture not supplied.</Panel></AppShell>;
+  if (!team || !next) return <PageBody><Panel className="p-8">Next fixture not supplied.</Panel></PageBody>;
   const opponent = next.opponent;
   const position = next.competition.standings.findIndex((row) => row.teamId === team.id) + 1;
   const standings = next.competition.standings.slice(0, 6);
-  return <AppShell>
+  return <PageBody>
     <div className="mb-4 flex items-baseline gap-3"><h1 className="text-xl font-semibold">Semi-final week</h1><span className="text-xs text-muted-foreground">Tuesday 9 June · Harlequins · {position}th in {next.competition.name}, {team.stats[0]?.detail}</span></div>
     <div className="grid gap-px overflow-hidden rounded border border-border bg-border xl:grid-cols-12">
       <section className="bg-card xl:col-span-12"><PanelHeading title="Next match" meta={next.fixture.round}/><div className="flex flex-wrap items-baseline gap-3 border-b border-border px-4 py-3"><strong className="text-xl">{next.fixture.fixture}</strong><span className="text-xs text-muted-foreground">Sat 13 Jun · {next.fixture.venue} · kick-off in 4 days</span><Link to="/teams/$teamId/$tab" params={{ teamId: opponent?.id ?? "bath-rugby", tab: "head-to-head" }} className="ml-auto text-xs font-medium text-primary">Head-to-head</Link></div><ComparisonRow label="" left={opponent?.name ?? "Opponent"} right={team.name} header/><ComparisonRow label="League position" left={opponent?.position ?? "—"} right={team.position}/><ComparisonRow label="Points" left={opponent?.stats[0]?.detail.replace(" points", "") ?? "—"} right={team.stats[0]?.detail.replace(" points", "") ?? "—"}/><ComparisonRow label="Won · drawn · lost" left={opponent?.record ?? "Not supplied"} right={team.record}/><ComparisonRow label="Last 5 (newest first)" left={opponent?.form.join(" ") ?? "—"} right={team.form.join(" ")}/><ComparisonRow label="Points per match" left={opponent?.stats[1]?.detail.replace(" per match", "") ?? "—"} right={team.stats[1]?.detail.replace(" per match", "") ?? "—"}/><div className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">Last meeting 23 May: Harlequins 17–26 Bath (L). 12 clips tagged.</div></section>
@@ -38,7 +38,7 @@ export function HomeView() {
     </div>
 
     <Panel className="mt-4 overflow-hidden"><PanelHeading title="Recent reports" meta={<Link to="/teams/$teamId/$tab" params={{ teamId: team.id, tab: "fixture-card" }}>Fixture Card</Link>}/><div className="grid h-7 grid-cols-[90px_1fr_110px_150px_70px_80px] items-center px-4 text-[11px] text-muted-foreground"><span>Type</span><span>Report</span><span>Formats</span><span>Owner</span><span>Date</span><span className="text-right">Status</span></div>{[["Match","Harlequins v Northampton · match pack","PDF CSV XML","James Molyneux","6 Jun","Ready"],["Team","Round 18 attacking trends","PDF · video","James Molyneux","6 Jun","Ready"],["Opposition","Bath opposition preview","PDF · video","Coaching group","9 Jun","Processing"]].map((row) => <div key={row[1]} className="grid min-h-9 grid-cols-[90px_1fr_110px_150px_70px_80px] items-center border-t border-border px-4 text-xs"><span className="text-muted-foreground">{row[0]}</span><span>{row[1]}</span><span className="font-mono text-[11px] text-muted-foreground">{row[2]}</span><span>{row[3]}</span><span className="text-muted-foreground">{row[4]}</span><span className={cn("text-right", row[5] === "Processing" && "text-highlight")}>{row[5]}</span></div>)}</Panel>
-  </AppShell>;
+  </PageBody>;
 }
 
 function PanelHeading({ title, meta }: { title: string; meta: ReactNode }) { return <div className="flex h-10 items-center justify-between border-b border-border px-4"><h2 className="text-[13px] font-semibold">{title}</h2><span className="text-xs text-muted-foreground">{meta}</span></div>; }

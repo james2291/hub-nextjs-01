@@ -4,7 +4,7 @@ import { Link } from "@/lib/link";
 import { ChevronRight, SearchX } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { AppShell, Panel } from "@/components/oval/app-shell";
+import { PageBody, Panel } from "@/components/oval/app-shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ export function Crumb({ children, last = false }: { children: ReactNode; last?: 
 
 export function NotFoundPanel({ kind, id }: { kind: string; id: string }) {
   return (
-    <AppShell>
+    <PageBody>
       <Panel className="mx-auto mt-10 max-w-xl p-8 text-center">
         <SearchX className="mx-auto size-8 text-primary" />
         <h1 className="mt-3 font-display text-xl font-bold">{kind} not found</h1>
@@ -38,7 +38,7 @@ export function NotFoundPanel({ kind, id }: { kind: string; id: string }) {
           <Button asChild><Link to="/">Back to Home</Link></Button>
         </div>
       </Panel>
-    </AppShell>
+    </PageBody>
   );
 }
 

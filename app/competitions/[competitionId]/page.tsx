@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { LegacyTabContent } from "@/components/oval/entity-tabs";
 
-export default async function CompetitionIndex({ params }: { params: Promise<{ competitionId: string }> }) {
-  redirect(`/competitions/${(await params).competitionId}/match-room`);
+// Overview tab.
+export default function CompetitionOverview() {
+  return <LegacyTabContent tab="" />;
 }

@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 
 const lineoutImage = "/assets/rugby-lineout-clip.jpg";
 const scrumImage = "/assets/rugby-scrum-clip.jpg";
-import { Panel, StatStrip } from "@/components/oval/app-shell";
+import { PageBody, Panel, StatStrip } from "@/components/oval/app-shell";
 import { AIInsightSection, type InsightMatch } from "@/components/oval/ai-insights";
 import { CompetitionPeople as CompetitionPeopleWorkspace } from "@/components/oval/competition-people";
 import { entityTabLabel, useEntityWorkspace } from "@/components/oval/entity-workspace";
@@ -31,8 +31,29 @@ function useClipSearch() {
   return { initialGroup: search.group, lastMatches: search.last };
 }
 
-export function EntityTabPage({ tab }: { tab: string }) {
-  const { entityType, entity } = useEntityWorkspace();
+// Prototype tab content shown under the redesign's tab URLs until each page is rebuilt on the feeds.
+const LEGACY_CONTENT: Record<string, Record<string, string>> = {
+  competition: { "": "match-room", fixtures: "fixture-card", table: "table", people: "players", stats: "reports", feeds: "live-xml" },
+  team: { "": "match-room", fixtures: "fixture-card", squad: "players", stats: "reports" },
+  player: { "": "match-room", fixtures: "fixture-card", stats: "player-stats" },
+  referee: { "": "match-room", fixtures: "fixture-card", stats: "referee-stats" },
+};
+
+export function LegacyTabContent({ tab }: { tab: string }) {
+  const { entityType, entity, header } = useEntityWorkspace();
+  const legacy = LEGACY_CONTENT[entityType]?.[tab] ?? "match-room";
+  return (
+    <PageBody>
+      {entity ? (
+        <EntityTabPage entityType={entityType} entity={entity} tab={legacy} />
+      ) : (
+        <Panel className="p-6 text-[13px] text-mute">{header.title}: this tab is being rebuilt on the 2025/26 feeds.</Panel>
+      )}
+    </PageBody>
+  );
+}
+
+function EntityTabPage({ entityType, entity, tab }: { entityType: string; entity: Competition | Team | Player | Referee; tab: string }) {
   if (entityType === "competition") return <CompetitionTab competition={entity as Competition} tab={tab} />;
   if (entityType === "team") return <TeamTab team={entity as Team} tab={tab} />;
   if (entityType === "player") return <PlayerTab player={entity as Player} tab={tab} />;

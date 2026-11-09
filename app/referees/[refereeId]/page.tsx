@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { LegacyTabContent } from "@/components/oval/entity-tabs";
 
-export default async function RefereeIndex({ params }: { params: Promise<{ refereeId: string }> }) {
-  redirect(`/referees/${(await params).refereeId}/match-room`);
+// Overview tab.
+export default function RefereeOverview() {
+  return <LegacyTabContent tab="" />;
 }
