@@ -551,7 +551,7 @@ function search(query: URLSearchParams): BuildResult {
   ]);
 }
 
-function me(query: URLSearchParams): BuildResult {
+function currentUser(query: URLSearchParams): BuildResult {
   const username = query.get("username");
   if (!username) return { error: "V2 calls get-user?username=. Pass username until the Cognito session supplies it." };
   return ok([call("aws", `get-user${qs({ username })}`, "src/_shared/authentication/helpers.ts")]);
@@ -567,9 +567,9 @@ const gap = (pattern: string, message: string, spec = true): GapDef => ({
 });
 
 export const hubRoutes: RouteDef[] = [
-  { method: "GET", pattern: "me", status: "routed", spec: true, upstream: ["aws get-user?username="], build: (_params, query) => me(query) },
-  gap("me/pins", "Pins live in the v2 browser (localStorage). There is no pins API to route."),
-  gap("me/home", "The v2 home page is not stored on an API. user-settings is preference JSON, not a home path. The spec only has PUT /me/home; the home page is read from GET /me.", false),
+  { method: "GET", pattern: "user", status: "routed", spec: true, upstream: ["aws get-user?username="], build: (_params, query) => currentUser(query) },
+  gap("user/pins", "V2 kept pins in the browser (localStorage), so there is no v2 source. The Hub serves this itself: app/api/v1/user/pins (temporary cookie store until sign-in and storage exist)."),
+  gap("user/home", "The v2 home page is not stored on an API. The spec only has PUT /user/home (served by the Hub, app/api/v1/user/home); the home page is read from GET /user.", false),
   { method: "GET", pattern: "search", status: "routed", spec: true, upstream: ["rugbyviz search", "rugbyviz returnteams", "rugbyviz returnofficials"], build: (_p, query) => search(query) },
   { method: "GET", pattern: "competitions", status: "routed", spec: true, upstream: ["aws list-competitions", "aws get-users-competitions"], build: (_p, query) => competitions(query) },
   { method: "GET", pattern: "competitions/:competitionId/standings", status: "routed", spec: true, upstream: ["rugbyviz competitionstandings/{compId}", "rugbyviz standing/search"], build: standings },

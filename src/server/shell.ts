@@ -27,7 +27,9 @@ export type ShellData = {
   /** Sidebar "Matches": the user's club's latest match. */
   latestMatch: ShellLink | null;
   fixtureCardHref: string;
-  defaultPins: ShellLink[];
+  /** User Pinned: the user's pins and home page (read from the pins store by the root layout). */
+  pins: Array<{ id: string; path: string; label: string; order: number }>;
+  homePath: string | null;
   /** Path segment → display name, for breadcrumbs. */
   names: Record<string, string>;
   downloadsHref: string;
@@ -49,15 +51,12 @@ function matchLabel(fixture: Fixture, clubSlug: string): string {
     : `${fixture.home.club.name} v ${fixture.away.club.name}`;
 }
 
-export function getShellData(): ShellData {
+export function getShellData(): Omit<ShellData, "pins" | "homePath"> {
   const now = hubNow();
   const club = CURRENT_USER.clubSlug;
   const next = getNextFixture(club, now);
   const opponent = next ? opponentOf(next, club) : null;
   const latest = getPastFixtures(club, now)[0];
-  const lastLeagueGame = getFixtures({ club, competition: "gallagher-prem" }).find(
-    (fixture) => !fixture.knockout,
-  );
 
   const names: Record<string, string> = {
     teams: "Teams",
@@ -95,17 +94,25 @@ export function getShellData(): ShellData {
     clubSlug: club,
     latestMatch: latest ? { label: matchLabel(latest, club), href: `/matches/${latest.id}` } : null,
     fixtureCardHref: `/teams/${club}/fixtures`,
-    defaultPins: [
-      { label: CURRENT_USER.clubName, href: `/teams/${club}` },
-      { label: "Gallagher PREM", href: "/competitions/gallagher-prem" },
-      { label: "Marcus Smith", href: "/players/marcus-smith" },
-      { label: "Christophe Ridley", href: "/referees/christophe-ridley" },
-      ...(lastLeagueGame
-        ? [{ label: matchLabel(lastLeagueGame, club), href: `/matches/${lastLeagueGame.id}` }]
-        : []),
-    ],
     names,
     downloadsHref: "/competitions/gallagher-prem/feeds",
     search: buildSearchIndex(),
   };
+}
+
+/** The handoff's five default pins, until the user changes their pins. */
+export function defaultPinEntries(): Array<{ path: string; label: string }> {
+  const club = CURRENT_USER.clubSlug;
+  const lastLeagueGame = getFixtures({ club, competition: "gallagher-prem" }).find(
+    (fixture) => !fixture.knockout,
+  );
+  return [
+    { label: CURRENT_USER.clubName, path: `/teams/${club}` },
+    { label: "Gallagher PREM", path: "/competitions/gallagher-prem" },
+    { label: "Marcus Smith", path: "/players/marcus-smith" },
+    { label: "Christophe Ridley", path: "/referees/christophe-ridley" },
+    ...(lastLeagueGame
+      ? [{ label: matchLabel(lastLeagueGame, club), path: `/matches/${lastLeagueGame.id}` }]
+      : []),
+  ];
 }
