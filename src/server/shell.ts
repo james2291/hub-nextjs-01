@@ -1,7 +1,6 @@
 // Data the app shell needs on every page: the next opponent, the latest match, default pins and
 // display names for breadcrumbs. Built on the server from the feeds and the hub clock.
 import { players } from "@/data/hub";
-import { buildSearchIndex, type SearchItem } from "@/server/search";
 import { hubNow } from "@/lib/now";
 import { CURRENT_USER } from "@/lib/user";
 import {
@@ -33,8 +32,6 @@ export type ShellData = {
   /** Path segment → display name, for breadcrumbs. */
   names: Record<string, string>;
   downloadsHref: string;
-  /** Search (⌘K) index: competitions, teams, players, referees. */
-  search: SearchItem[];
 };
 
 /** "Exeter Chiefs" → "Exeter": the place part of a club name. */
@@ -77,8 +74,6 @@ export function getShellData(): Omit<ShellData, "pins" | "homePath"> {
   for (const entry of getCompetitions()) names[entry.slug] = entry.name;
   for (const entry of getReferees()) names[entry.slug] = entry.name;
   for (const entry of players) names[entry.id] = entry.name;
-  for (const fixture of getFixtures())
-    names[String(fixture.id)] = `${fixture.home.club.name} v ${fixture.away.club.name}`;
 
   return {
     user: {
@@ -96,7 +91,6 @@ export function getShellData(): Omit<ShellData, "pins" | "homePath"> {
     fixtureCardHref: `/teams/${club}/fixtures`,
     names,
     downloadsHref: "/competitions/gallagher-prem/feeds",
-    search: buildSearchIndex(),
   };
 }
 

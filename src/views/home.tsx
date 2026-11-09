@@ -53,8 +53,22 @@ export function HomeView({ now, fixtures, standings, feedNames }: HomeProps) {
     keys.add(today);
     return [...keys].sort();
   }, [fixtures, today]);
+  // Out of season (no matches today), open on the nearest matchday instead of an empty list.
+  const matchDays = useMemo(
+    () => new Set(fixtures.map((fixture) => ukDayKey(fixture.dateTime))),
+    [fixtures],
+  );
+  const lastMatchDay = days.filter((day) => matchDays.has(day)).at(-1) ?? today;
+  const defaultDay = useMemo(() => {
+    if (matchDays.has(today)) return today;
+    const distance = (day: string) => Math.abs(new Date(day).getTime() - new Date(today).getTime());
+    return (
+      [...matchDays].sort((a, b) => distance(a) - distance(b) || b.localeCompare(a))[0] ?? today
+    );
+  }, [matchDays, today]);
+  const seasonOver = today > lastMatchDay;
   // The selected day is in the URL (?day=2026-05-16) so it can be shared and survives Back.
-  const [selected, setSelected] = useUrlState<string>("day", today, days);
+  const [selected, setSelected] = useUrlState<string>("day", defaultDay, days);
   const index = days.indexOf(selected);
   const start = Math.max(0, Math.min(index - WINDOW, days.length - (WINDOW * 2 + 1)));
   const visible = days.slice(start, start + WINDOW * 2 + 1);
@@ -99,6 +113,11 @@ export function HomeView({ now, fixtures, standings, feedNames }: HomeProps) {
     <div className="flex flex-col gap-4 px-4 pb-8 pt-5 md:px-6">
       <DataNote>
         {feedNamesLabel(feedNames)} 2025/26 feeds, viewed as matchday {ukDate(now)}, {ukTime(now)}.
+        {seasonOver
+          ? ` The 2025/26 season is complete: showing the last matchday, ${ukDate(`${lastMatchDay}T12:00:00Z`)}, and the final table.`
+          : !matchDays.has(today) && selected === defaultDay
+            ? ` No matches today: showing the nearest matchday.`
+            : ""}
       </DataNote>
       <div className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-xl font-semibold">Matchday</h1>

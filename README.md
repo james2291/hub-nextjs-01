@@ -177,6 +177,17 @@ Feeds still needed for the demo and illustrative areas:
 - The User Pinned endpoints are built (`app/api/v1/user/`) to the contract: 201/409/422 on pin, 204/404 on unpin, 422 when home isn't a pin, max 20 pins. **Temporary hold:** with no sign-in or database yet, pins and the home page live in a signed httpOnly cookie (`src/server/user-pins.ts`, key `HUB_COOKIE_SECRET`), so they persist per browser, not across devices. Only that module changes when Cognito and storage arrive.
 - The sidebar and Pin button read pins on the server and change them through the API, with optimistic updates that roll back on failure. Pins saved in the browser before this change are not carried over.
 
+## UI/UX pass (9 Nov 2026)
+
+- **Phones and tablets:** KPI strips go 2 → 3 → all columns; panels stack below the lg breakpoint; table panels scroll sideways (`Section minWidth`) with the league table's club column pinned; the Fixture Card becomes match cards with "Select assets"; tab rows fade at the edge; the match header stacks.
+- **Accessibility:** `faint` and sidebar-label colours meet 4.5:1; visible focus ring on every control; ARIA table semantics for the league table, Fixture Card and shared rows; spoken labels for W/L form and coloured scores; Search returns focus on close; the phone menu is a modal dialog. axe-core (WCAG 2 A/AA) reports no violations on the main pages.
+- **Unconnected actions** (reports, compare, publish, download, preview pack, clips, playlists) use `ComingSoonButton`: they look unavailable and say what they need.
+- **Data:** league table columns sort (with `aria-sort`); the Fixture Card's filters, search and date order, Home's day and the Stats measure live in the URL (`useUrlState`), so views can be shared; bars show value, average and rank on hover.
+- **States:** out of season, Home opens on the nearest matchday and says the season is complete; each section has a loading skeleton and an in-page error panel with Try again (shell and header stay).
+- **Payload:** the search index loads when Search first opens (`/api/hub/search-index`), and match pages name themselves in the breadcrumb, so the shell data sent with every page shrank by about 15 KB.
+
+Not done: pages are still rendered per request (the shell reads the hub clock and the pins cookie), so Competition, Team and Referee pages aren't cached yet.
+
 ## Next steps (from the build plan)
 
 1. Reshape each `/api/v1/*` pass-through response to its `docs/openapi.yaml` schema (`GET /api/v1/routing` lists them).
