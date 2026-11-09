@@ -129,6 +129,8 @@ Groundwork for reshaping the 33 routed spec endpoints (the "Map v2 source" set) 
 - Fixed: error bodies now match `ApiError`. The no-v2-source 501 used `code: "not_implemented"` (not in the enum) plus a top-level `hub` key (`additionalProperties: false`). It now sends `upstream_unavailable` with `details.reason: "no_v2_source"`. Reshaped endpoints map upstream 401/403/404/429 to their codes and anything else to 502. They never pass the upstream body through.
 - Fixed: the catalog marked `GET me/home` as in the spec. The spec only has `PUT /me/home`, and the home page comes from `GET /me` (`homePath`).
 
+- `docs/openapi.yaml`: the pin endpoints (`GET`/`POST /me/pins`, `DELETE /me/pins/{pinId}`, `PUT /me/home`) now sit in their own **User Pinned** section. The rest of the old "Session, pins and search" section is now "Session and search" (`GET /me` session info and `GET /search`). Paths and operationIds are unchanged.
+
 Blocked before mapping can start:
 
 1. **Upstream payloads.** Run with `OVAL_API_GATEWAY_URL` and a Cognito id token, then capture each endpoint into `fixtures/upstream/`.

@@ -13,8 +13,10 @@ servers:
 security:
 - bearerAuth: []
 tags:
-- name: Session, pins and search
-  description: 'Hub endpoints: session, pins and search.'
+- name: Session and search
+  description: 'Hub endpoints: session and search.'
+- name: User Pinned
+  description: 'Hub endpoints: pages the user pins to the sidebar, and which pinned page opens as home.'
 - name: Competitions
   description: 'Hub endpoints: competitions.'
 - name: Teams
@@ -39,7 +41,7 @@ paths:
       summary: The signed-in user, their club, role, home page and current season.
       operationId: get_me
       tags:
-      - Session, pins and search
+      - Session and search
       description: 'Used by: Shell footer, Home (P1), every "my club" default (replaces hard-coded Harlequins).
 
 
@@ -62,7 +64,7 @@ paths:
       summary: The user's pinned pages, in sidebar order.
       operationId: get_me_pins
       tags:
-      - Session, pins and search
+      - User Pinned
       description: 'Used by: Sidebar Pinned list.
 
 
@@ -92,7 +94,7 @@ paths:
       summary: Pin a page.
       operationId: post_me_pins
       tags:
-      - Session, pins and search
+      - User Pinned
       description: 'Used by: Top-bar Pin button.
 
 
@@ -147,7 +149,7 @@ paths:
       summary: Unpin a page. Clears the home page if it was this pin.
       operationId: delete_me_pins_pinId
       tags:
-      - Session, pins and search
+      - User Pinned
       description: 'Used by: Top-bar Pin button.
 
 
@@ -179,7 +181,7 @@ paths:
       summary: Set or clear the page opened after sign-in.
       operationId: put_me_home
       tags:
-      - Session, pins and search
+      - User Pinned
       description: 'Used by: Pinned list "Set as home".
 
 
@@ -230,7 +232,7 @@ paths:
       summary: Find competitions, teams, players, referees and matches by name.
       operationId: get_search
       tags:
-      - Session, pins and search
+      - Session and search
       description: 'Used by: Global search overlay (P4).
 
 
