@@ -1,6 +1,6 @@
-import { LegacyTabContent } from "@/components/oval/entity-tabs";
+import { PlayerOverview } from "@/components/oval/player/overview";
 
 // Overview tab.
-export default function PlayerOverview() {
-  return <LegacyTabContent tab="" />;
+export default async function Page({ params }: { params: Promise<{ playerId: string }> }) {
+  return <PlayerOverview slug={(await params).playerId} />;
 }

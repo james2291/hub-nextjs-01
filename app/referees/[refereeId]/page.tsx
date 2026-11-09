@@ -1,6 +1,6 @@
-import { LegacyTabContent } from "@/components/oval/entity-tabs";
+import { RefereeOverview } from "@/components/oval/referee/overview";
 
 // Overview tab.
-export default function RefereeOverview() {
-  return <LegacyTabContent tab="" />;
+export default async function Page({ params }: { params: Promise<{ refereeId: string }> }) {
+  return <RefereeOverview slug={(await params).refereeId} />;
 }

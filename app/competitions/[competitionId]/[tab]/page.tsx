@@ -12,7 +12,6 @@ import { CompetitionPeople } from "@/components/oval/competition/people";
 import { CompetitionStats } from "@/components/oval/competition/stats";
 import { CompetitionTable } from "@/components/oval/competition/table";
 import { EntityFixtureCard } from "@/components/oval/entity-fixture-card";
-import { LegacyTabContent } from "@/components/oval/entity-tabs";
 import { competitionHeader } from "@/server/entities";
 
 type Params = Promise<{ competitionId: string; tab: string }>;
@@ -33,6 +32,5 @@ export default async function CompetitionTabPage({ params }: { params: Params })
   if (tab === "table") return <CompetitionTable slug={competitionId} />;
   if (tab === "people") return <CompetitionPeople slug={competitionId} />;
   if (tab === "stats") return <CompetitionStats slug={competitionId} />;
-  if (tab === "feeds") return <CompetitionFeeds slug={competitionId} />;
-  return <LegacyTabContent tab={tab} />;
+  return <CompetitionFeeds slug={competitionId} />;
 }

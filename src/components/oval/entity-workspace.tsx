@@ -65,6 +65,7 @@ export function EntityHeader({ header }: { header: EntityHeaderData }) {
             code={header.crest.code}
             colour={header.crest.colour}
             onColour={header.crest.onColour}
+            {...(header.crest.round ? { className: "rounded-full" } : {})}
           />
         ) : (
           <PlainCrest code={header.crest.code} />

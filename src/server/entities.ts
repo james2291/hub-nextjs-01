@@ -20,7 +20,7 @@ export type EntityHeaderData = {
   kind: "competition" | "team" | "player" | "referee";
   id: string;
   title: string;
-  crest: { code: string; colour: string | null; onColour: string | null };
+  crest: { code: string; colour: string | null; onColour: string | null; round?: boolean };
   meta: string;
   actions: string[];
 };
@@ -111,7 +111,7 @@ export function refereeHeader(slug: string): EntityHeaderData | undefined {
     kind: "referee",
     id: slug,
     title: referee.name,
-    crest: { code: initials(referee.name), colour: null, onColour: null },
+    crest: { code: initials(referee.name), colour: "#E8B917", onColour: "#18181B", round: true },
     meta: parts.join(" · "),
     actions: ["Compare referees"],
   };
@@ -131,7 +131,7 @@ export function playerHeader(slug: string): EntityHeaderData | undefined {
     kind: "player",
     id: slug,
     title: player.name,
-    crest: club ? clubCrest(club) : { code: initials(player.name), colour: null, onColour: null },
+    crest: { code: initials(player.name), colour: "#18181B", onColour: "#FFFFFF", round: true },
     meta: parts.join(" · "),
     actions: ["Compare", "Send clips to player"],
   };
