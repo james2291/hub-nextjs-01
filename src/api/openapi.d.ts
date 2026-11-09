@@ -12,7 +12,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The signed-in user, their club, role, home page and current season.
+         * The signed-in user, their club, role and current season.
          * @description Used by: Shell footer, Home (P1), every "my club" default (replaces hard-coded Harlequins).
          *
          *     Access: Own data only (per user).
@@ -73,28 +73,6 @@ export interface paths {
          *     Access: Own data only (per user).
          */
         delete: operations["delete_user_pins_pinId"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/user/home": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Set or clear the page opened after sign-in.
-         * @description Used by: Pinned list "Set as home".
-         *
-         *     Access: Own data only (per user).
-         */
-        put: operations["put_user_home"];
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1307,7 +1285,6 @@ export interface components {
             /** @enum {string} */
             role: "analyst" | "coach" | "broadcaster" | "media" | "admin";
             club: components["schemas"]["Ref"] | null;
-            homePath: string | null;
             currentSeason: string;
         };
         Pin: {
@@ -1719,52 +1696,6 @@ export interface operations {
             };
             /** @description No such pin for this user */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    put_user_home: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    path: string | null;
-                };
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        homePath: string | null;
-                    };
-                };
-            };
-            /** @description No or expired session */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            /** @description Path is not one of the user's pins */
-            422: {
                 headers: {
                     [name: string]: unknown;
                 };

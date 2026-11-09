@@ -2,7 +2,7 @@
 
 // App shell (HANDOFF.md section 2): 200px dark sidebar, 48px top bar with breadcrumbs, search,
 // Downloads and Pin. Rendered once by app/layout.tsx with data from src/server/shell.ts.
-import { Home, Menu, Pin, PinOff, Search, X } from "lucide-react";
+import { Menu, Pin, PinOff, Search, X } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -79,7 +79,7 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
   return (
     <ShellContext.Provider value={data}>
       <LabelContext.Provider value={registerLabel}>
-        <PinsProvider initialPins={data.pins} initialHome={data.homePath}>
+        <PinsProvider initialPins={data.pins}>
           <div className="min-h-screen bg-page text-[13px] text-ink antialiased md:flex">
             <aside className="hidden h-screen w-[200px] shrink-0 flex-col bg-side px-2.5 py-3.5 md:sticky md:top-0 md:flex">
               <Sidebar data={data} pathname={pathname} />
@@ -202,7 +202,7 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
 }
 
 function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
-  const { pins, home, setHome } = usePins();
+  const { pins } = usePins();
   const item = (active: boolean) =>
     cn(
       "flex h-[30px] items-center rounded-[3px] px-2.5 text-[13px] no-underline",
@@ -220,13 +220,8 @@ function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
       </NextLink>
       <nav aria-label="Main" className="flex flex-col gap-px">
         <div className={label}>This week</div>
-        <NextLink href={home ?? "/"} className={item(pathname === "/")}>
+        <NextLink href="/" className={item(pathname === "/")}>
           Home
-          {home && (
-            <span className="ml-auto truncate pl-2 text-xs text-side-lab">
-              {pins.find((pin) => pin.path === home)?.label}
-            </span>
-          )}
         </NextLink>
         <NextLink
           href={data.nextOpponent?.href ?? "/next-opponent"}
@@ -252,27 +247,9 @@ function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
           <p className="px-2.5 text-[11px] text-side-lab">Use Pin in the top bar to add pages.</p>
         )}
         {pins.map((pin) => (
-          <div key={pin.path} className="group flex items-center">
-            <NextLink href={pin.path} className={cn(item(pathname === pin.path), "min-w-0 flex-1")}>
-              <span className="truncate">{pin.label}</span>
-            </NextLink>
-            <button
-              type="button"
-              onClick={() => setHome(home === pin.path ? null : pin.path)}
-              aria-label={
-                home === pin.path ? `Remove ${pin.label} as home` : `Set ${pin.label} as home`
-              }
-              title={home === pin.path ? "Home page" : "Set as home"}
-              className={cn(
-                "grid size-[30px] shrink-0 place-items-center rounded-[3px] hover:bg-side-act",
-                home === pin.path
-                  ? "text-white"
-                  : "text-side-lab opacity-0 focus:opacity-100 group-hover:opacity-100",
-              )}
-            >
-              <Home className="size-3" />
-            </button>
-          </div>
+          <NextLink key={pin.path} href={pin.path} className={item(pathname === pin.path)}>
+            <span className="truncate">{pin.label}</span>
+          </NextLink>
         ))}
       </nav>
       <div className="mt-auto border-t border-side-act p-2.5 text-xs text-side-ink">

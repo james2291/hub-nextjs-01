@@ -26,9 +26,8 @@ export type ShellData = {
   /** Sidebar "Matches": the user's club's latest match. */
   latestMatch: ShellLink | null;
   fixtureCardHref: string;
-  /** User Pinned: the user's pins and home page (read from the pins store by the root layout). */
+  /** User Pinned: the user's pins (read from the pins store by the root layout). */
   pins: Array<{ id: string; path: string; label: string; order: number }>;
-  homePath: string | null;
   /** Path segment → display name, for breadcrumbs. */
   names: Record<string, string>;
   downloadsHref: string;
@@ -48,7 +47,7 @@ function matchLabel(fixture: Fixture, clubSlug: string): string {
     : `${fixture.home.club.name} v ${fixture.away.club.name}`;
 }
 
-export function getShellData(): Omit<ShellData, "pins" | "homePath"> {
+export function getShellData(): Omit<ShellData, "pins"> {
   const now = hubNow();
   const club = CURRENT_USER.clubSlug;
   const next = getNextFixture(club, now);

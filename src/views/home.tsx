@@ -4,13 +4,11 @@
 // day's matches grouped by competition; the league table in a 430px right column.
 import { ChevronDown, ChevronLeft, ChevronRight, Play, Star } from "lucide-react";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { useShell } from "@/components/oval/app-shell";
 import { LeagueTable, LeagueTableLink } from "@/components/oval/league-table";
 import { ColourBar, DataNote } from "@/components/oval/primitives";
-import { usePins } from "@/lib/pins";
 import { useUrlState } from "@/lib/url-state";
 import {
   ukDate,
@@ -37,15 +35,6 @@ export type HomeProps = {
 
 export function HomeView({ now, fixtures, standings, feedNames }: HomeProps) {
   const shell = useShell();
-  const { home } = usePins();
-  const router = useRouter();
-  // Open the user's chosen home page once per browser session; Home stays reachable after that.
-  useEffect(() => {
-    if (home && home !== "/" && !sessionStorage.getItem("oval-hub:home-visited")) {
-      sessionStorage.setItem("oval-hub:home-visited", "1");
-      router.replace(home);
-    }
-  }, [home, router]);
 
   const today = ukDayKey(now);
   const days = useMemo(() => {

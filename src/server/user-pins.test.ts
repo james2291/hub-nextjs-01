@@ -5,7 +5,6 @@ import { decodePins, encodePins, isHubPath, makePins } from "@/server/user-pins"
 describe("User Pinned cookie store", () => {
   const state = {
     pins: makePins([{ path: "/teams/harlequins", label: "Harlequins" }]),
-    homePath: "/teams/harlequins",
   };
 
   it("round-trips a signed state", () => {
@@ -13,7 +12,7 @@ describe("User Pinned cookie store", () => {
   });
   it("rejects a tampered payload or signature", () => {
     const [payload, signature] = encodePins(state).split(".");
-    const forged = Buffer.from(JSON.stringify({ pins: [], homePath: "/x" })).toString("base64url");
+    const forged = Buffer.from(JSON.stringify({ pins: [] })).toString("base64url");
     expect(decodePins(`${forged}.${signature}`)).toBeNull();
     expect(decodePins(`${payload}.nope`)).toBeNull();
     expect(decodePins(undefined)).toBeNull();
@@ -25,6 +24,10 @@ describe("User Pinned cookie store", () => {
     ]);
     expect(pins.map((pin) => pin.order)).toEqual([0, 1]);
     expect(makePins([{ path: "/a", label: "A" }])[0]?.id).toBe(pins[0]?.id);
+  });
+  it("ignores a home page left in an older cookie", () => {
+    const older = { pins: state.pins, homePath: "/teams/harlequins" };
+    expect(decodePins(encodePins(older as never))).toEqual({ pins: state.pins });
   });
   it("only accepts Hub page paths", () => {
     expect(isHubPath("/teams/harlequins/fixtures")).toBe(true);

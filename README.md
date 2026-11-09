@@ -174,7 +174,7 @@ Feeds still needed for the demo and illustrative areas:
 ## User API and pins (9 Nov 2026)
 
 - Every `me` path in `docs/openapi.yaml` is now `user`: `GET /api/v1/user`, `GET`/`POST /api/v1/user/pins`, `DELETE /api/v1/user/pins/{pinId}`, `PUT /api/v1/user/home` (operationIds `get_user`, `get_user_pins`, …; schema `User`). The routing catalog and generated types follow.
-- The User Pinned endpoints are built (`app/api/v1/user/`) to the contract: 201/409/422 on pin, 204/404 on unpin, 422 when home isn't a pin, max 20 pins. **Temporary hold:** with no sign-in or database yet, pins and the home page live in a signed httpOnly cookie (`src/server/user-pins.ts`, key `HUB_COOKIE_SECRET`), so they persist per browser, not across devices. Only that module changes when Cognito and storage arrive.
+- The User Pinned endpoints are built (`app/api/v1/user/`) to the contract: 201/409/422 on pin, 204/404 on unpin, max 20 pins. **Temporary hold:** with no sign-in or database yet, pins live in a signed httpOnly cookie (`src/server/user-pins.ts`, key `HUB_COOKIE_SECRET`), so they persist per browser, not across devices. Only that module changes when Cognito and storage arrive.
 - The sidebar and Pin button read pins on the server and change them through the API, with optimistic updates that roll back on failure. Pins saved in the browser before this change are not carried over.
 
 ## UI/UX pass (9 Nov 2026)
@@ -195,6 +195,11 @@ Not done: pages are still rendered per request (the shell reads the hub clock an
 - **`GET /api/v1/matches/{matchId}/live-xml` meets its contract:** `application/xml`, `ETag`, `304` on `If-None-Match`, `Cache-Control: no-store`; add `?download=1` to save `{matchId}-live.xml`. Event XML/CSV (`download/{kind}`) are served as files the same way.
 - Without `OVAL_API_GATEWAY_URL` the views say the data service isn't connected. The wiring was tested end to end against a local mock of the gateway.
 - The prototype zip supplied for reference had no APIs (static demo data); it was used only for the Match Centre's layout and views. Discipline and Turnovers from the prototype need v2 parameters (event ids) that aren't in the catalogue yet, so they're not shown.
+
+## Home is fixed (9 Nov 2026)
+
+- Users can no longer make a pinned page their home screen: Home is always the matchday page. Removed the sidebar's "Set as home" buttons, the redirect to a chosen page and the pinned page's name beside Home.
+- Removed `PUT /api/v1/user/home` (route and spec) and `homePath` from the `User` schema and the pins cookie. Cookies saved with a home page still load; the home page in them is ignored. Pins stay as sidebar shortcuts.
 
 ## Next steps (from the build plan)
 

@@ -1,5 +1,6 @@
 // User Pinned store (docs/openapi.yaml "User Pinned": GET/POST /api/v1/user/pins,
-// DELETE /api/v1/user/pins/{pinId}, PUT /api/v1/user/home).
+// DELETE /api/v1/user/pins/{pinId}). Pins are sidebar shortcuts only; Home is always the
+// matchday page.
 //
 // TEMPORARY HOLD: there is no sign-in or database yet, so a user's pins and home page are kept in
 // a signed, httpOnly cookie. The endpoints already follow the contract; when Cognito and storage
@@ -13,7 +14,7 @@ import type { components } from "@/api/openapi";
 import { defaultPinEntries } from "@/server/shell";
 
 export type Pin = components["schemas"]["Pin"];
-export type PinState = { pins: Pin[]; homePath: string | null };
+export type PinState = { pins: Pin[] };
 
 export const PIN_COOKIE = "oval-hub-pins";
 export const MAX_PINS = 20;
@@ -57,10 +58,8 @@ export function decodePins(raw: string | undefined): PinState | null {
   try {
     const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as PinState;
     if (!Array.isArray(parsed.pins)) return null;
-    return {
-      pins: parsed.pins.slice(0, MAX_PINS),
-      homePath: typeof parsed.homePath === "string" ? parsed.homePath : null,
-    };
+    // Cookies written before the home option was removed may still carry homePath; it's ignored.
+    return { pins: parsed.pins.slice(0, MAX_PINS) };
   } catch {
     return null;
   }
@@ -88,13 +87,12 @@ export function isHubPath(path: string): boolean {
 
 // ---- Route handler helpers -------------------------------------------------------------------
 
-/** The current user's pins and home page; the handoff's defaults until they change anything. */
+/** The current user's pins; the handoff's defaults until they change anything. */
 export async function readPins(): Promise<PinState> {
   const store = await cookies();
   return (
     decodePins(store.get(PIN_COOKIE)?.value) ?? {
       pins: makePins(defaultPinEntries()),
-      homePath: null,
     }
   );
 }
@@ -103,10 +101,7 @@ export async function writePins(state: PinState): Promise<void> {
   const store = await cookies();
   store.set(
     PIN_COOKIE,
-    encodePins({
-      pins: state.pins.map((pin, order) => ({ ...pin, order })),
-      homePath: state.homePath,
-    }),
+    encodePins({ pins: state.pins.map((pin, order) => ({ ...pin, order })) }),
     pinCookieOptions,
   );
 }
