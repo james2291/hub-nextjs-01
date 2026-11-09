@@ -82,7 +82,10 @@ export function EntityHeader({ header }: { header: EntityHeaderData }) {
           ))}
         </div>
       </div>
-      <nav aria-label={`${header.title} sections`} className="mt-3 flex gap-[22px] overflow-x-auto">
+      <nav
+        aria-label={`${header.title} sections`}
+        className="mt-3 flex gap-[22px] overflow-x-auto max-md:pr-8 max-md:[mask-image:linear-gradient(to_right,black_80%,transparent)]"
+      >
         {entityNavigation[header.kind].map((tab) => {
           const href = entityHref(header.kind, header.id, tab.slug);
           const active =

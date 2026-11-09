@@ -111,6 +111,7 @@ export function RefereeOverview({ slug }: { slug: string }) {
       <PanelGrid>
         <Section
           span={8}
+          minWidth={640}
           title="Recent appointments"
           meta={<PanelLink href={`/referees/${slug}/fixtures`}>Fixture Card</PanelLink>}
         >

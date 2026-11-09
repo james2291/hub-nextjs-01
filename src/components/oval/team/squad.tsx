@@ -168,7 +168,7 @@ export function TeamSquad({
                   >
                     <span
                       className={cn(
-                        "grid size-[50px] place-items-center rounded-full text-[15px] font-semibold",
+                        "grid size-9 place-items-center rounded-full text-[13px] font-semibold sm:size-[50px] sm:text-[15px]",
                         player
                           ? "bg-white text-club"
                           : "border-2 border-dashed border-white/70 text-white",
@@ -177,7 +177,7 @@ export function TeamSquad({
                     >
                       {slot.number}
                     </span>
-                    <span className="whitespace-nowrap rounded-[2px] bg-ink/85 px-2 py-0.5 text-[11px] text-white">
+                    <span className="whitespace-nowrap rounded-[2px] bg-ink/85 px-2 py-0.5 text-[11px] text-white max-sm:hidden">
                       {player?.name ?? slot.label}
                     </span>
                   </button>

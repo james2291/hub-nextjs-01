@@ -33,6 +33,7 @@ export function PlayerStats({ slug }: { slug: string }) {
       <PanelGrid>
         <Section
           span={7}
+          minWidth={520}
           title="Season profile"
           meta={peer ? `Hub ratings v ${peer.name}` : "Hub ratings"}
         >
@@ -110,6 +111,7 @@ export function PlayerStats({ slug }: { slug: string }) {
         </Section>
         <Section
           span={5}
+          minWidth={480}
           title={club ? `${possessive(club.name)} last 4 PREM matches` : "Recent matches"}
           meta="From the fixtures feed"
         >

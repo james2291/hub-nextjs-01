@@ -41,7 +41,7 @@ export function LeagueTable({
         style={{ gridTemplateColumns: columns }}
       >
         <span>#</span>
-        <span>Club</span>
+        <span className={compact ? undefined : "sticky left-0 z-10 bg-panel"}>Club</span>
         <span className="text-right">P</span>
         <span className="text-right">W</span>
         <span className="text-right">D</span>
@@ -80,7 +80,13 @@ export function LeagueTable({
             style={{ gridTemplateColumns: columns }}
           >
             <span className="text-mute">{row.position}</span>
-            <span className="flex min-w-0 items-center gap-2">
+            <span
+              className={cn(
+                "flex min-w-0 items-center gap-2",
+                !compact && "sticky left-0 z-10 -my-px self-stretch py-px",
+                !compact && (mine ? "bg-club-tint" : "bg-panel"),
+              )}
+            >
               <ColourBar colour={row.club.colour} />
               <NextLink
                 href={clubHref(row.club.slug)}

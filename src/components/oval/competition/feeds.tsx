@@ -69,6 +69,7 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
         exports.
       </div>
       <Section
+        minWidth={640}
         title="Match event files"
         meta={round[0]?.round.replace(/ · R(\d+)$/, " round $1") ?? ""}
       >
@@ -109,7 +110,7 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
       <DataNote label="DEMO DATA">
         The exports list is example data until the exports API is built.
       </DataNote>
-      <Section title="Exports" meta="Also in the Downloads tray">
+      <Section minWidth={600} title="Exports" meta="Also in the Downloads tray">
         <div className="px-4 pb-3">
           <div
             role="row"

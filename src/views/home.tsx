@@ -114,8 +114,10 @@ export function HomeView({ now, fixtures, standings, feedNames }: HomeProps) {
                 <ChevronLeft className="size-4" />
               </StripArrow>
               <div className="flex flex-1 gap-1 overflow-hidden">
-                {visible.map((day) => {
+                {visible.map((day, position) => {
                   const active = day === selected;
+                  // Phones show the selected day and two either side.
+                  const far = Math.abs(position - visible.indexOf(selected)) > 2;
                   const date = `${day}T12:00:00Z`;
                   return (
                     <button
@@ -126,6 +128,7 @@ export function HomeView({ now, fixtures, standings, feedNames }: HomeProps) {
                       className={cn(
                         "flex h-11 min-w-0 flex-1 flex-col items-center justify-center gap-px rounded-[3px] text-[11px]",
                         active ? "bg-ink text-white" : "text-ink hover:bg-subtle",
+                        far && "max-sm:hidden",
                       )}
                     >
                       <span>

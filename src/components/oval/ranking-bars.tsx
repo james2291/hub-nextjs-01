@@ -79,7 +79,7 @@ export function RankingBars({
           return (
             <div
               key={row.slug}
-              className="grid h-[34px] grid-cols-[24px_180px_minmax(0,1fr)_48px] items-center gap-3"
+              className="grid h-[34px] grid-cols-[18px_96px_minmax(0,1fr)_40px] items-center gap-2 sm:grid-cols-[24px_180px_minmax(0,1fr)_48px] sm:gap-3"
             >
               <span className="text-mute">{index + 1}</span>
               <NextLink

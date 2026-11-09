@@ -11,8 +11,20 @@ import { getInsight, insightsApiConfigured } from "@/server/insights/client.serv
 export async function POST(request: Request) {
   const parsed = InsightRequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: { code: "validation_failed", message: "Invalid insight request", details: parsed.error.flatten() } }, { status: 422 });
+    return NextResponse.json(
+      {
+        error: {
+          code: "validation_failed",
+          message: "Invalid insight request",
+          details: parsed.error.flatten(),
+        },
+      },
+      { status: 422 },
+    );
   }
   const items = await Promise.all(parsed.data.items.map(getInsight));
-  return NextResponse.json({ items, source: insightsApiConfigured() ? "oval-insights-api" : "placeholder" }, { headers: { "Cache-Control": "private, max-age=60" } });
+  return NextResponse.json(
+    { items, source: insightsApiConfigured() ? "oval-insights-api" : "placeholder" },
+    { headers: { "Cache-Control": "private, max-age=60" } },
+  );
 }

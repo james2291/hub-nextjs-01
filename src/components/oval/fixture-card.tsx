@@ -50,6 +50,7 @@ export function FixtureCard({
   const [preset, setPreset] = useState<Preset>("Default");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showAssets, setShowAssets] = useState(false);
 
   const competitions = useMemo(
     () => [...new Map(fixtures.map((f) => [f.competition.slug, f.competition])).values()],
@@ -196,7 +197,101 @@ export function FixtureCard({
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded border border-line bg-panel">
+      {/* Phones: one card per match; asset ticks behind "Select assets". */}
+      <div className="overflow-hidden rounded border border-line bg-panel md:hidden">
+        <div className="flex items-center justify-between border-b border-line2 px-4 py-2.5">
+          <span className="text-xs font-medium text-ink">{summary}</span>
+          <button
+            type="button"
+            aria-expanded={showAssets}
+            onClick={() => setShowAssets((value) => !value)}
+            className="h-7 min-h-0 rounded-[3px] border border-line px-2.5 text-xs font-medium"
+          >
+            {showAssets ? "Hide assets" : "Select assets"}
+          </button>
+        </div>
+        {rows.length === 0 && (
+          <div className="px-4 py-8 text-center text-mute">No matches for these filters.</div>
+        )}
+        {rows.map((fixture) => {
+          const outcome = perspective ? resultFor(fixture, perspective) : null;
+          const label = `${fixture.home.club.name} v ${fixture.away.club.name}`;
+          return (
+            <div key={fixture.id} className="border-b border-line2 px-4 py-3 last:border-b-0">
+              <div className="flex justify-between text-xs text-mute">
+                <span>
+                  {ukDate(fixture.dateTime)} ·{" "}
+                  <span className="font-mono">{ukTime(fixture.dateTime)}</span>
+                </span>
+                <span className="truncate pl-2">{fixture.round}</span>
+              </div>
+              <NextLink
+                href={`/matches/${fixture.id}`}
+                className="mt-1.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2.5"
+              >
+                <span
+                  className={cn(
+                    "truncate text-right",
+                    perspective === fixture.home.club.slug ? "font-medium text-club" : "text-ink",
+                  )}
+                >
+                  {fixture.home.club.name}
+                </span>
+                <span
+                  className={cn(
+                    "text-[15px] font-semibold tabular-nums",
+                    outcome === "W" ? "text-win" : outcome === "L" ? "text-loss" : "text-ink",
+                  )}
+                >
+                  {fixture.scored ? `${fixture.home.score}–${fixture.away.score}` : "v"}
+                </span>
+                <span
+                  className={cn(
+                    "truncate",
+                    perspective === fixture.away.club.slug ? "font-medium text-club" : "text-ink",
+                  )}
+                >
+                  {fixture.away.club.name}
+                </span>
+              </NextLink>
+              <div className="mt-1 truncate text-center text-[11px] text-mute">
+                {[fixture.competition.name, fixture.venue, fixture.referee?.name]
+                  .filter(Boolean)
+                  .join(" · ")}
+                {!fixture.scored && " · No score in feed"}
+                {outcome && ` · ${outcome === "W" ? "Won" : outcome === "L" ? "Lost" : "Drawn"}`}
+              </div>
+              {showAssets && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {columns.map((asset) => {
+                    const id = key(fixture.id, asset);
+                    return (
+                      <label
+                        key={asset}
+                        className={cn(
+                          "flex h-7 items-center gap-1.5 rounded-[3px] border px-2 text-xs",
+                          selected.has(id) ? "border-club bg-club-tint" : "border-line",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={`${asset} · ${label}`}
+                          checked={selected.has(id)}
+                          onChange={() => toggle(id)}
+                          className="size-3.5 min-h-0 accent-[var(--club)]"
+                        />
+                        {asset}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded border border-line bg-panel md:block">
         <div className="min-w-[1100px]">
           <div
             role="row"

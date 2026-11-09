@@ -99,6 +99,7 @@ export function CompetitionOverview({ slug }: { slug: string }) {
 
         <Section
           span={4}
+          minWidth={420}
           title={`${lastRoundLabel} results`}
           meta={lastRound[0] ? shortDay(lastRound[0].dateTime) : null}
         >
@@ -150,14 +151,19 @@ export function CompetitionOverview({ slug }: { slug: string }) {
       </PanelGrid>
 
       <PanelGrid>
-        <Section span={5} title="Season leaders by club" meta="Standings feed">
+        <Section span={5} minWidth={460} title="Season leaders by club" meta="Standings feed">
           {standings ? (
             <Leaders rows={standings.rows} href={href} />
           ) : (
             <p className="px-4 py-6 text-mute">Needs a standings feed for this competition.</p>
           )}
         </Section>
-        <Section span={7} title="Biggest wins" meta={leagueStage ? "Regular season" : "Pool stage"}>
+        <Section
+          span={7}
+          minWidth={560}
+          title="Biggest wins"
+          meta={leagueStage ? "Regular season" : "Pool stage"}
+        >
           <div
             role="row"
             className="grid h-[30px] grid-cols-[100px_minmax(0,1fr)_64px_minmax(0,1fr)_56px] items-center gap-2.5 border-b border-line2 px-4 text-[11px] font-medium text-mute"

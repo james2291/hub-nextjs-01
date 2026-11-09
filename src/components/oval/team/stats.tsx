@@ -114,6 +114,7 @@ export function TeamStats({ slug }: { slug: string }) {
       <PanelGrid>
         <Section
           span={8}
+          minWidth={640}
           title={`${club.name} v the PREM`}
           meta={<PanelLink href="/competitions/gallagher-prem/stats">Compare every club</PanelLink>}
         >

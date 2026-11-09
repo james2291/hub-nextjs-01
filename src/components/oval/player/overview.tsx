@@ -53,6 +53,7 @@ export function PlayerOverview({ slug }: { slug: string }) {
       <PanelGrid>
         <Section
           span={8}
+          minWidth={600}
           title={club ? `${possessive(club.name)} recent matches` : "Recent matches"}
           meta={<PanelLink href={`/players/${slug}/fixtures`}>Fixture Card</PanelLink>}
         >

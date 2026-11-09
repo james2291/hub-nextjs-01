@@ -176,6 +176,7 @@ export function Opposition({ slug }: { slug: string }) {
         <PanelGrid>
           <Section
             span={6}
+            minWidth={420}
             title="Season so far"
             meta={`Gallagher PREM${next ? `, before ${next.round}` : ""}`}
           >
@@ -236,6 +237,7 @@ export function Opposition({ slug }: { slug: string }) {
             <Section
               key={club.slug}
               span={6}
+              minWidth={480}
               title={`${possessive(placeName(club.name))} last 6`}
               meta="All competitions"
             >

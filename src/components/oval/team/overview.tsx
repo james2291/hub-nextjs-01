@@ -160,7 +160,7 @@ export function TeamOverview({ slug }: { slug: string }) {
 
       {row && standings && (
         <PanelGrid>
-          <Section span={8} title="Against the league" meta="Gallagher PREM 2025/26">
+          <Section span={8} minWidth={620} title="Against the league" meta="Gallagher PREM 2025/26">
             <AgainstLeague
               measures={leagueMeasures(row, standings.rows)}
               clubShort={club.shortName}
@@ -181,6 +181,7 @@ export function TeamOverview({ slug }: { slug: string }) {
         {cup && (
           <Section
             span={roster.length ? 6 : 12}
+            minWidth={420}
             title={cup.name}
             meta={[...pools, stage && stage !== "Pool stage" ? stage.toLowerCase() : null]
               .filter(Boolean)

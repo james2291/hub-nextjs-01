@@ -38,25 +38,26 @@ export function MatchHeader({ fixture, now }: { fixture: Fixture; now: string })
     .join(" · ");
   return (
     <section className="border-b border-line bg-panel px-4 pt-4 md:px-6">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
+      <div className="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <div className="flex min-w-0 items-center gap-3">
           <Crest
             code={fixture.home.club.code}
             colour={fixture.home.club.colour}
             onColour={fixture.home.club.onColour}
+            className="max-sm:hidden"
           />
           <div className="min-w-0">
             <NextLink
               href={clubHref(fixture.home.club.slug)}
-              className="block truncate text-xl font-semibold hover:underline"
+              className="block truncate text-sm font-semibold hover:underline sm:text-xl"
             >
               {fixture.home.club.name}
             </NextLink>
-            <div className="text-xs text-mute">Home</div>
+            <div className="hidden text-xs text-mute sm:block">Home</div>
           </div>
         </div>
-        <div className="text-center">
-          <h1 className="text-[32px] font-semibold leading-none tabular-nums">
+        <div className="order-first col-span-2 text-center sm:order-none sm:col-span-1 sm:max-w-[480px]">
+          <h1 className="text-2xl font-semibold leading-none tabular-nums sm:text-[32px]">
             {played && fixture.scored ? (
               <>
                 {fixture.home.score} <span className="text-faint">–</span> {fixture.away.score}
@@ -65,7 +66,7 @@ export function MatchHeader({ fixture, now }: { fixture: Fixture; now: string })
               <span className="font-mono text-2xl text-mute">{ukTime(fixture.dateTime)}</span>
             )}
           </h1>
-          <div className="mt-1.5 text-xs text-mute">
+          <div className="mt-1.5 text-[11px] text-mute sm:text-xs">
             {line}
             {played && fixture.home.ht !== null && fixture.away.ht !== null
               ? ` · HT ${fixture.home.ht}–${fixture.away.ht}`
@@ -82,20 +83,24 @@ export function MatchHeader({ fixture, now }: { fixture: Fixture; now: string })
           <div className="min-w-0">
             <NextLink
               href={clubHref(fixture.away.club.slug)}
-              className="block truncate text-xl font-semibold hover:underline"
+              className="block truncate text-sm font-semibold hover:underline sm:text-xl"
             >
               {fixture.away.club.name}
             </NextLink>
-            <div className="text-xs text-mute">Away</div>
+            <div className="hidden text-xs text-mute sm:block">Away</div>
           </div>
           <Crest
             code={fixture.away.club.code}
             colour={fixture.away.club.colour}
             onColour={fixture.away.club.onColour}
+            className="max-sm:hidden"
           />
         </div>
       </div>
-      <nav aria-label="Match sections" className="mt-3 flex gap-[22px]">
+      <nav
+        aria-label="Match sections"
+        className="mt-3 flex gap-[22px] overflow-x-auto max-md:pr-8 max-md:[mask-image:linear-gradient(to_right,black_80%,transparent)]"
+      >
         {MATCH_TABS.map((tab) => {
           const href = tab.slug ? `${base}/${tab.slug}` : base;
           const active = pathname === href;
