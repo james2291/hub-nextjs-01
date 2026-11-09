@@ -5,13 +5,15 @@
 // so every asset can be ticked; Download hands the selection to the exports API once it exists.
 import { ArrowRight, Download, RotateCcw, Search } from "lucide-react";
 import NextLink from "next/link";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import { useClubHref } from "@/components/oval/app-shell";
 import { ComingSoonButton } from "@/components/oval/coming-soon";
 import { withCellRoles } from "@/components/oval/primitives";
 import { Button } from "@/components/ui/button";
 import { recordFor, resultFor, ukDate, ukTime, type Fixture, type ResultLetter } from "@/lib/rugby";
+import { useUrlState } from "@/lib/url-state";
 import { cn } from "@/lib/utils";
 
 const PRESETS = {
@@ -45,11 +47,34 @@ export function FixtureCard({
   sourceNote,
 }: FixtureCardProps) {
   const clubHref = useClubHref();
-  const [competition, setCompetition] = useState(ALL);
-  const [round, setRound] = useState(ALL);
-  const [result, setResult] = useState<ResultLetter | typeof ALL>(ALL);
-  const [preset, setPreset] = useState<Preset>("Default");
-  const [query, setQuery] = useState("");
+  // Filters live in the URL so a filtered Fixture Card can be shared and survives Back.
+  const router = useRouter();
+  const pathname = usePathname();
+  const [competition, setCompetition] = useUrlState<string>("competition", ALL);
+  const [round, setRound] = useUrlState<string>("round", ALL);
+  const [result, setResult] = useUrlState<ResultLetter | typeof ALL>("result", ALL, [
+    ALL,
+    "W",
+    "D",
+    "L",
+  ]);
+  const [preset, setPreset] = useUrlState<Preset>("assets", "Default", [
+    "Default",
+    "Videos",
+    "Reports",
+    "Files",
+  ]);
+  const [order, setOrder] = useUrlState<"newest" | "oldest">("order", "newest", [
+    "newest",
+    "oldest",
+  ]);
+  const [urlQuery, setUrlQuery] = useUrlState<string>("q", "");
+  const [query, setQuery] = useState<string>(urlQuery);
+  useEffect(() => {
+    if (query === urlQuery) return;
+    const timer = window.setTimeout(() => setUrlQuery(query), 300);
+    return () => window.clearTimeout(timer);
+  }, [query, urlQuery, setUrlQuery]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showAssets, setShowAssets] = useState(false);
 
@@ -66,7 +91,7 @@ export function FixtureCard({
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return fixtures.filter((fixture) => {
+    const filtered = fixtures.filter((fixture) => {
       if (competition !== ALL && fixture.competition.slug !== competition) return false;
       if (round !== ALL && fixture.round !== round) return false;
       if (result !== ALL && perspective && resultFor(fixture, perspective) !== result) return false;
@@ -78,7 +103,8 @@ export function FixtureCard({
         fixture.referee?.name ?? "",
       ].some((text) => text.toLowerCase().includes(q));
     });
-  }, [fixtures, competition, round, result, perspective, query]);
+    return order === "oldest" ? [...filtered].reverse() : filtered;
+  }, [fixtures, competition, round, result, perspective, query, order]);
 
   const columns = PRESETS[preset];
   const key = (fixtureId: number, asset: string) => `${fixtureId}:${asset}`;
@@ -101,12 +127,9 @@ export function FixtureCard({
       return next;
     });
   const clear = () => {
-    setCompetition(ALL);
-    setRound(ALL);
-    setResult(ALL);
-    setPreset("Default");
     setQuery("");
     setSelected(new Set());
+    router.replace(pathname, { scroll: false });
   };
 
   const grid = `104px minmax(0,1.3fr) 76px minmax(0,1.3fr) 100px minmax(0,1.15fr) minmax(0,0.95fr) ${columns.map(() => "64px").join(" ")} 84px`;
@@ -303,7 +326,20 @@ export function FixtureCard({
           >
             {withCellRoles(
               <>
-                <span>Date · KO (UK)</span>
+                <span aria-sort={order === "newest" ? "descending" : "ascending"}>
+                  <button
+                    type="button"
+                    onClick={() => setOrder(order === "newest" ? "oldest" : "newest")}
+                    title={
+                      order === "newest"
+                        ? "Newest first: show oldest first"
+                        : "Oldest first: show newest first"
+                    }
+                    className="inline-flex min-h-0 items-center gap-1 hover:text-ink"
+                  >
+                    Date · KO (UK) {order === "newest" ? "↓" : "↑"}
+                  </button>
+                </span>
                 <span className="text-right">Home</span>
                 <span className="text-center">Result</span>
                 <span>Away</span>

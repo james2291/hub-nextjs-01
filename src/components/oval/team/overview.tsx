@@ -281,7 +281,10 @@ function AgainstLeague({
             style={{ gridTemplateColumns: columns }}
           >
             <span className="truncate">{measure.label}</span>
-            <span className="relative block h-3.5">
+            <span
+              className="relative block h-3.5"
+              title={`${measure.label}: ${measure.value.toFixed(measure.decimals)}, league average ${measure.league.toFixed(1)}, ${ordinal(measure.rank)} of ${total}`}
+            >
               <span className="absolute inset-x-0 top-1.5 h-0.5 bg-line2" />
               <span
                 className="absolute left-0 top-1 h-1.5 bg-ink"

@@ -11,6 +11,7 @@ import { useShell } from "@/components/oval/app-shell";
 import { LeagueTable, LeagueTableLink } from "@/components/oval/league-table";
 import { ColourBar, DataNote } from "@/components/oval/primitives";
 import { usePins } from "@/lib/pins";
+import { useUrlState } from "@/lib/url-state";
 import {
   ukDate,
   ukDayKey,
@@ -52,7 +53,8 @@ export function HomeView({ now, fixtures, standings, feedNames }: HomeProps) {
     keys.add(today);
     return [...keys].sort();
   }, [fixtures, today]);
-  const [selected, setSelected] = useState(today);
+  // The selected day is in the URL (?day=2026-05-16) so it can be shared and survives Back.
+  const [selected, setSelected] = useUrlState<string>("day", today, days);
   const index = days.indexOf(selected);
   const start = Math.max(0, Math.min(index - WINDOW, days.length - (WINDOW * 2 + 1)));
   const visible = days.slice(start, start + WINDOW * 2 + 1);

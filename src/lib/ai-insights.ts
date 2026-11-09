@@ -34,7 +34,9 @@ export const InsightRequestItemSchema = z.object({
   perspective: InsightPerspective,
   sentenceLimit: z.enum(["2-3", "3-4", "3-5"]),
 });
-export const InsightRequestSchema = z.object({ items: z.array(InsightRequestItemSchema).min(1).max(6) });
+export const InsightRequestSchema = z.object({
+  items: z.array(InsightRequestItemSchema).min(1).max(6),
+});
 export type InsightRequestItem = z.infer<typeof InsightRequestItemSchema>;
 
 export type InsightStatus = "ready" | "pending" | "unavailable" | "placeholder";

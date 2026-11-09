@@ -3,10 +3,10 @@
 // Ranking bars with a measure switcher, a league-average marker and the user's club in red
 // (HANDOFF.md section 4, "Competition Stats").
 import NextLink from "next/link";
-import { useState } from "react";
 
 import { useClubHref, useShell } from "@/components/oval/app-shell";
 import { signed } from "@/lib/rugby";
+import { useUrlState } from "@/lib/url-state";
 import { cn } from "@/lib/utils";
 
 export type RankingMeasure = {
@@ -26,7 +26,11 @@ export function RankingBars({
 }) {
   const shell = useShell();
   const clubHref = useClubHref();
-  const [key, setKey] = useState(measures[0]?.key ?? "");
+  const [key, setKey] = useUrlState<string>(
+    "measure",
+    measures[0]?.key ?? "",
+    measures.map((item) => item.key),
+  );
   const measure = measures.find((item) => item.key === key) ?? measures[0];
   if (!measure) return null;
   const rows = [...measure.values].sort((a, b) =>
@@ -88,7 +92,10 @@ export function RankingBars({
               >
                 {row.name}
               </NextLink>
-              <span className="relative block h-3 bg-[#EDEDE9]">
+              <span
+                className="relative block h-3 bg-[#EDEDE9]"
+                title={`${row.name}: ${format(row.value)} ${measure.label.toLowerCase()} (${averageLabel} ${measure.signed ? signed(Math.round(average * 10) / 10) : (Math.round(average * 10) / 10).toFixed(1)})`}
+              >
                 <span
                   className={cn("absolute inset-y-0", mine ? "bg-club" : "bg-[#A8A8A0]")}
                   style={{ left: `${Math.min(zero, end)}%`, width: `${Math.abs(end - zero)}%` }}

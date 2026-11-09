@@ -67,6 +67,7 @@ export function Momentum({
               key={index}
               type="button"
               aria-label={`${index * 5}–${index * 5 + 5} minutes`}
+              title={`${index * 5}–${index * 5 + 5}′: ${bar >= 0 ? home : away} on top (${50 + Math.abs(Math.round(bar / 1.2))}% ${mode.toLowerCase()}, illustrative)`}
               onClick={() => setSelected(index)}
               className={cn("relative h-full min-h-0", selected === index && "bg-subtle")}
             >
