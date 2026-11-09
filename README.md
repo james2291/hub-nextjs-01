@@ -4,7 +4,7 @@ Oval Hub v2 prototype, ported from TanStack Start (Lovable) to **Next.js 16.4.5 
 
 > **Temporary holds.** Three parts of this codebase stand in for APIs that aren't built yet:
 >
-> - **Data:** pages read static data from `src/data/hub.ts` until the Hub API (`docs/openapi.yaml`) is built.
+> - **Data:** pages read the real 2025/26 RugbyViz feeds bundled in `src/server/feeds/2025-26/` (fixtures and results for PREM, Champions Cup and Challenge Cup; PREM standings). Players, officiating figures, team sheets, match events and video are Hub demo or illustrative data (`src/data/hub.ts`), labelled on the page. Both are replaced by the Hub API (`docs/openapi.yaml`) as it is built; the feed functions already return plain props so pages don't change.
 > - **AI insights:** `POST /api/v1/insights` returns labelled placeholder text until the AWS Oval Insights API is live. Set `INSIGHTS_API_URL` to switch it on; no other code changes.
 > - **Upstream routing:** `GET /api/v1/*` passes Oval Hub v2 upstream payloads through unchanged (`contract: "upstream-passthrough"`) until each endpoint gets a reshaper in `src/server/contract/reshape.ts`, which switches it to its `docs/openapi.yaml` body. Pages don't call it yet.
 >
@@ -18,6 +18,8 @@ cp .env.example .env.local   # INSIGHTS_API_URL / INSIGHTS_API_KEY, or leave emp
 npm run dev                  # http://localhost:3000
 npm run build && npm start   # production
 npm run typecheck && npm run lint
+npm test                     # Vitest: feed derivations and the handoff's check values
+HUB_NOW=2026-05-16T14:30:00+01:00 npm run dev   # pin "now" to match the design screenshots
 npm run check:routing        # v2 call map
 npm run check:contract       # catalog vs spec, reshapers vs captured fixtures
 npm run gen:api              # regenerate src/api/openapi.d.ts after editing docs/openapi.yaml
@@ -137,10 +139,42 @@ Blocked before mapping can start:
 2. **Hub id → RugbyViz id.** The spec takes slugs (`gallagher-prem`), but upstreams need numeric ids, so `/competitions/gallagher-prem/standings` answers 422 today. A slug ↔ `compId`/`teamId`/`playerId`/`officialId` source is needed (likely `list-competitions` / `returnteams` / `returnofficials`; confirm from payloads).
 3. **Current season default.** The spec defaults `season` to the current season. The catalog needs it passed explicitly.
 
+## Oval Hub redesign (9 Nov 2026)
+
+Built from the design handoff in `design/oval-hub-handoff/` (spec `HANDOFF.md`, 22 screens). All 22 pages are rebuilt in the repo's own components; the prototype's `support.js` and inline styles are not used.
+
+- **Tokens and type:** the handoff colours are theme tokens in `src/styles.css` (`bg-page`, `border-line`, `text-mute`, `bg-side`, `text-club`, `text-win`…); IBM Plex is self-hosted from `app/fonts/`.
+- **Shell:** in the root layout (`src/components/oval/app-shell.tsx`, data from `src/server/shell.ts`). The Pin button stays alongside Downloads (User Pinned); the handoff's five pins are the defaults.
+- **Routes:** entity Overview is the root (`/teams/harlequins`); tabs are `fixtures`, `table`, `people`, `stats`, `feeds`, `squad`. Matches are `/matches/{RugbyViz id}` with `video` and `stats`. Next opponent is `/opposition/{team}`; `/next-opponent` redirects. Old tab slugs redirect to the nearest tab.
+- **"Now":** the real clock, or `HUB_NOW`. Home's day strip, the sidebar's next opponent, Next opponent and match states follow it. With the real clock after June 2026 the season is over, so Home opens on an empty day and Next opponent falls back to the Fixture Card.
+- **Check values:** every figure in `HANDOFF.md` section 5 is a test in `src/server/feeds/feeds.test.ts`.
+- **Links:** a crawl of 189 internal links from every page returned no errors.
+
+Where the build differs from the screens on purpose:
+
+- Team availability (Managed / Return to play, the Squad availability view) is left out: it was taken out of scope on 8 Oct.
+- Home shows only competitions in the feeds, so the URC and Top 14 example groups are gone.
+- Harlequins' crest reads "HQ" everywhere (the screens mix HQ and HAR).
+- Player percentiles aren't invented: season figures show without percentiles until the player feed exists.
+- Illustrative match data (momentum, stats, try and kick map) is tied to the real score so it never contradicts it; unplayed matches say so instead.
+- Copy that guessed a player's or referee's pronouns uses neutral wording.
+
+Feeds still needed for the demo and illustrative areas:
+
+| Area                                                                                   | Feed                                |
+| -------------------------------------------------------------------------------------- | ----------------------------------- |
+| Player figures, percentiles, heatmap, clips; competition player list; team key players | Player stats feed                   |
+| Squad selection, matchday 23, minutes per match                                        | Team sheets                         |
+| Referee penalties, cards, set piece, advantage                                         | Officiating feed                    |
+| Match momentum, top stats, timeline events, try and kick map                           | Event feed with x/y coordinates     |
+| Match video, clips, key moments                                                        | Clip / video feed                   |
+| Exports list, Downloads count                                                          | Exports API                         |
+| Pool tables for the cups; standings by round                                           | EPCR standings; per-round standings |
+
 ## Next steps (from the build plan)
 
 1. Reshape each `/api/v1/*` pass-through response to its `docs/openapi.yaml` schema (`GET /api/v1/routing` lists them).
 2. Replace `src/data/hub.ts` imports with React Query hooks in `src/api/` per endpoint (build plan section 6).
 3. Move read-only sections to server components with `<Suspense>` as their endpoints land.
 4. Migrate `@/lib/link` call sites to plain `next/link` + `buildHref()` / a typed `routes` helper over time.
-5. 13 lint warnings are prototype patterns (setState in effects, `<img>`); fix as each component is wired to the API.
+5. 3 lint warnings remain from shadcn/prototype code in `src/components/ui` and `src/hooks`; fix as they are touched.
