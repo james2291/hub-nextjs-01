@@ -3,7 +3,11 @@
 
 export type EntityKind = "competition" | "team" | "player" | "referee";
 
-export type EntityTab = { label: string; slug: string };
+export type EntityTab = {
+  label: string;
+  slug: string;
+  /** Small grey tag after the label, e.g. "Analyst". */ tag?: string;
+};
 
 export const entityNavigation: Record<EntityKind, EntityTab[]> = {
   competition: [
@@ -12,7 +16,7 @@ export const entityNavigation: Record<EntityKind, EntityTab[]> = {
     { label: "Table", slug: "table" },
     { label: "Teams & players", slug: "people" },
     { label: "Stats", slug: "stats" },
-    { label: "Feeds", slug: "feeds" },
+    { label: "Feeds", slug: "feeds", tag: "Analyst" },
   ],
   team: [
     { label: "Overview", slug: "" },

@@ -103,7 +103,20 @@ export function LeagueTable({
                 <span className="text-right text-mute">{row.pointsAgainst}</span>
               </>
             )}
-            <span className="text-right text-mute">{signed(row.pointsDiff)}</span>
+            <span
+              className={cn(
+                "text-right",
+                compact
+                  ? "text-mute"
+                  : row.pointsDiff > 0
+                    ? "text-win"
+                    : row.pointsDiff < 0
+                      ? "text-loss"
+                      : "text-mute",
+              )}
+            >
+              {signed(row.pointsDiff)}
+            </span>
             {!compact && (
               <>
                 <span className="text-right text-mute">{row.triesFor}</span>
@@ -118,18 +131,20 @@ export function LeagueTable({
           </div>
         );
       })}
-      <div
-        className={cn(
-          "text-[11px] leading-normal text-faint",
-          compact ? "px-3.5 py-2.5" : "px-4 py-3",
-        )}
-      >
-        Top {standings.playOffPlaces} go to the play-offs. BP = bonus points. Last 5 includes
-        play-off matches, newest on the right.
-        <br />
-        Final 2025/26 standings from the standings feed. A table as it stood on a given day would
-        need standings by round.
-      </div>
+      {compact ? (
+        <div className="px-3.5 py-2.5 text-[11px] leading-normal text-faint">
+          Top {standings.playOffPlaces} go to the play-offs. BP = bonus points. Last 5 includes
+          play-off matches, newest on the right.
+          <br />
+          Final 2025/26 standings from the standings feed. A table as it stood on a given day would
+          need standings by round.
+        </div>
+      ) : (
+        <div className="px-4 py-3 text-xs text-mute">
+          PF/PA = points for/against · TF/TA = tries for/against · BP = bonus points. Last 5
+          includes play-off matches, newest on the right. Source: standings feed.
+        </div>
+      )}
     </div>
   );
 }

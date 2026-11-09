@@ -1,6 +1,10 @@
-import { LegacyTabContent } from "@/components/oval/entity-tabs";
+import { CompetitionOverview } from "@/components/oval/competition/overview";
 
 // Overview tab.
-export default function CompetitionOverview() {
-  return <LegacyTabContent tab="" />;
+export default async function CompetitionOverviewPage({
+  params,
+}: {
+  params: Promise<{ competitionId: string }>;
+}) {
+  return <CompetitionOverview slug={(await params).competitionId} />;
 }

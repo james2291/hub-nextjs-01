@@ -101,6 +101,9 @@ export function EntityHeader({ header }: { header: EntityHeaderData }) {
               )}
             >
               {tab.label}
+              {tab.tag && (
+                <span className="ml-1.5 text-[11px] font-normal text-faint">{tab.tag}</span>
+              )}
             </NextLink>
           );
         })}

@@ -90,7 +90,7 @@ export function competitionHeader(slug: string): EntityHeaderData | undefined {
     kind: "competition",
     id: slug,
     title: competition.name,
-    crest: { code: competition.code, colour: null, onColour: null },
+    crest: { code: competition.code, colour: "#18181B", onColour: "#FFFFFF" },
     meta: parts.join(" · "),
     actions: ["Competition report"],
   };
