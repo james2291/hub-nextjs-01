@@ -1,184 +1,225 @@
 "use client";
 
-import { useNavigate } from "@/lib/link";
-import { Clock, CornerDownLeft, Search, ShieldCheck, Trophy, User, Users, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+// Search (⌘K) modal (HANDOFF.md section 4, "Search"): type tabs with counts, results grouped by
+// type, keyboard: ↑↓ move, ↵ open, Tab switch type, Esc close. The first result is highlighted.
+import { CornerDownLeft, Search, Trophy, UserRound, Users, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 
-import { searchEntities, type EntityKind, type SearchEntity } from "@/data/hub";
+import { useShell } from "@/components/oval/app-shell";
 import { cn } from "@/lib/utils";
+import type { SearchItem, SearchType } from "@/server/search";
 
-export type SearchKind = EntityKind;
-
-type Entity = SearchEntity;
-
-const kindLabel: Record<SearchKind, string> = {
-  competition: "Competitions",
-  team: "Teams",
-  player: "Players",
-  referee: "Referees",
-};
-
-const kindIcon: Record<SearchKind, typeof Users> = {
-  competition: Trophy,
-  team: Users,
-  player: User,
-  referee: ShieldCheck,
-};
-
-const entities: Entity[] = searchEntities;
-
-const filters: Array<{ key: "all" | SearchKind; label: string }> = [
-  { key: "all", label: "All" },
-  { key: "competition", label: "Competitions" },
-  { key: "team", label: "Teams" },
-  { key: "player", label: "Players" },
-  { key: "referee", label: "Referees" },
+const TABS: Array<{ key: SearchType | "all"; label: string; group: string }> = [
+  { key: "all", label: "All", group: "" },
+  { key: "competition", label: "Competitions", group: "Competitions" },
+  { key: "team", label: "Teams", group: "Teams" },
+  { key: "player", label: "Players", group: "Players" },
+  { key: "referee", label: "Referees", group: "Referees" },
 ];
 
+const ICONS: Record<SearchType, ComponentType<{ className?: string }>> = {
+  competition: Trophy,
+  team: Users,
+  player: UserRound,
+  referee: UserRound,
+};
 
 export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const navigate = useNavigate();
+  if (!open) return null;
+  return <SearchDialog onClose={onClose} />;
+}
+
+function SearchDialog({ onClose }: { onClose: () => void }) {
+  const { search: index } = useShell();
+  const router = useRouter();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | SearchKind>("all");
+  const [tab, setTab] = useState<SearchType | "all">("all");
   const [active, setActive] = useState(0);
-  const [recent, setRecent] = useState<Entity[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => {
+  const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return entities.filter((entity) => {
-      if (filter !== "all" && entity.kind !== filter) return false;
-      if (!q) return true;
-      return `${entity.name} ${entity.detail}`.toLowerCase().includes(q);
-    });
-  }, [query, filter]);
+    const found = q
+      ? index.filter((item) => `${item.name} ${item.detail}`.toLowerCase().includes(q))
+      : index.filter((item) => item.featured);
+    return found.sort(
+      (a, b) =>
+        TABS.findIndex((t) => t.key === a.type) - TABS.findIndex((t) => t.key === b.type) ||
+        a.rank - b.rank,
+    );
+  }, [index, query]);
   const counts = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const matching = entities.filter((entity) => !q || `${entity.name} ${entity.detail}`.toLowerCase().includes(q));
-    return Object.fromEntries(filters.map((item) => [item.key, matching.filter((entity) => item.key === "all" || entity.kind === item.key).length]));
-  }, [query]);
-
-  const shown = query.trim() === "" && filter === "all" && recent.length > 0 ? recent : results;
-
-  useEffect(() => setActive(0), [query, filter]);
+    const result: Record<string, number> = { all: matches.length };
+    for (const item of matches) result[item.type] = (result[item.type] ?? 0) + 1;
+    return result;
+  }, [matches]);
+  const results = tab === "all" ? matches : matches.filter((item) => item.type === tab);
+  const current = Math.min(active, Math.max(0, results.length - 1));
 
   useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setFilter("all");
-    }
-  }, [open]);
+    listRef.current
+      ?.querySelector(`[data-index="${current}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [current]);
 
-  if (!open) return null;
-
-  const select = (entity: Entity) => {
-    setRecent((prev) => [entity, ...prev.filter((item) => item.id !== entity.id)].slice(0, 4));
+  const open = (item: SearchItem | undefined) => {
+    if (!item) return;
     onClose();
-    if (entity.kind === "competition") void navigate({ to: "/competitions/$competitionId/$tab", params: { competitionId: entity.id, tab: "match-room" } });
-    else if (entity.kind === "team") void navigate({ to: "/teams/$teamId/$tab", params: { teamId: entity.id, tab: "match-room" } });
-    else if (entity.kind === "player") void navigate({ to: "/players/$playerId/$tab", params: { playerId: entity.id, tab: "match-room" } });
-    else void navigate({ to: "/referees/$refereeId/$tab", params: { refereeId: entity.id, tab: "match-room" } });
+    router.push(item.href);
   };
-
-
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "ArrowDown") {
+    if (event.key === "Escape") {
       event.preventDefault();
-      setActive((index) => Math.min(index + 1, shown.length - 1));
+      onClose();
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActive(Math.min(current + 1, results.length - 1));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      setActive((index) => Math.max(index - 1, 0));
-    } else if (event.key === "Enter" && shown[active]) {
+      setActive(Math.max(current - 1, 0));
+    } else if (event.key === "Enter") {
       event.preventDefault();
-      select(shown[active]);
-    } else if (event.key === "Escape") {
-      onClose();
+      open(results[current]);
     } else if (event.key === "Tab") {
       event.preventDefault();
-      const index = filters.findIndex((item) => item.key === filter);
-      const next = filters[(index + (event.shiftKey ? filters.length - 1 : 1)) % filters.length];
-      if (next) setFilter(next.key);
+      const position = TABS.findIndex((t) => t.key === tab);
+      const step = event.shiftKey ? -1 : 1;
+      const next = TABS[(position + step + TABS.length) % TABS.length];
+      if (next) setTab(next.key);
+      setActive(0);
     }
   };
 
-  let lastKind: SearchKind | null = null;
-
+  let lastType: SearchType | null = null;
   return (
-    <div className="fixed inset-0 z-[70] bg-foreground/40 px-4 pt-[8vh] backdrop-blur-sm" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-50" onKeyDown={onKeyDown}>
+      <div className="absolute inset-0 bg-[rgba(17,24,39,0.45)]" onClick={onClose} />
       <div
-        className="mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
         role="dialog"
-        aria-label="Search Oval Hub"
+        aria-modal="true"
+        aria-label="Search"
+        className="absolute left-1/2 top-14 flex md:ml-[100px] max-h-[calc(100vh-80px)] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col overflow-hidden rounded bg-panel shadow-[0_24px_60px_rgba(17,24,39,0.35)]"
       >
-        <div className="flex items-center gap-3 border-b border-border px-4">
-          <Search className="size-4 text-muted-foreground" />
+        <label className="flex h-[60px] items-center gap-3 border-b border-line px-[18px]">
+          <Search className="size-4 text-mute" />
           <input
             autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={onKeyDown}
+            type="search"
+            aria-label="Search competitions, teams, players, referees"
             placeholder="Search competitions, teams, players, referees…"
-            aria-label="Search query"
-            className="h-14 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setActive(0);
+            }}
+            className="min-h-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-faint"
           />
-          <button aria-label="Close search" onClick={onClose}><X className="size-4 text-muted-foreground" /></button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
-          {filters.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setFilter(item.key)}
-              className={cn(
-                "rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
-                filter === item.key ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {item.label} <span className="ml-1 font-mono text-[10px] opacity-65">{counts[item.key]}</span>
-            </button>
-          ))}
-          <span className="ml-auto hidden text-[10px] font-medium uppercase text-muted-foreground sm:block">Tab to switch</span>
-        </div>
-
-        <div ref={listRef} className="max-h-[52vh] overflow-y-auto p-2">
-          {query.trim() === "" && filter === "all" && recent.length > 0 && (
-            <p className="flex items-center gap-1.5 px-2 pb-1 pt-2 text-[10px] font-semibold uppercase text-muted-foreground"><Clock className="size-3" /> Recent</p>
-          )}
-          {shown.length === 0 && (
-            <p className="px-3 py-8 text-center text-[13px] text-muted-foreground">No matches for “{query}”. Try a team, player, referee or competition name.</p>
-          )}
-          {shown.map((entity, index) => {
-            const Icon = kindIcon[entity.kind];
-            const showHeading = query.trim() !== "" || filter !== "all" || recent.length === 0;
-            const heading = showHeading && entity.kind !== lastKind ? kindLabel[entity.kind] : null;
-            lastKind = entity.kind;
+          <button
+            type="button"
+            aria-label="Close search"
+            onClick={onClose}
+            className="grid size-9 place-items-center rounded-[3px] text-[#55554F] hover:bg-subtle"
+          >
+            <X className="size-4" />
+          </button>
+        </label>
+        <div
+          role="tablist"
+          aria-label="Result type"
+          className="flex items-center gap-1 border-b border-line px-3.5 py-2.5"
+        >
+          {TABS.map((item) => {
+            const selected = tab === item.key;
             return (
-              <div key={entity.id}>
-                {heading && <p className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase text-muted-foreground">{heading}</p>}
+              <button
+                key={item.key}
+                role="tab"
+                type="button"
+                aria-selected={selected}
+                onClick={() => {
+                  setTab(item.key);
+                  setActive(0);
+                }}
+                className={cn(
+                  "flex h-[30px] items-center gap-1.5 rounded-[3px] px-2.5 text-[11px] font-medium",
+                  selected ? "bg-[#FCE8EB] text-[#9E0B23]" : "text-[#55554F] hover:bg-subtle",
+                )}
+              >
+                {item.label}
+                <span className={cn("text-[10px]", selected ? "text-[#9E0B23]" : "text-faint")}>
+                  {counts[item.key] ?? 0}
+                </span>
+              </button>
+            );
+          })}
+          <span className="ml-auto text-[10px] font-medium text-faint">Tab to switch</span>
+        </div>
+        <div ref={listRef} className="flex-1 overflow-y-auto px-2 pb-2.5 pt-1.5">
+          {results.length === 0 && (
+            <div className="px-2 py-8 text-center text-mute">No results for “{query}”.</div>
+          )}
+          {results.map((item, position) => {
+            const heading =
+              item.type !== lastType ? TABS.find((t) => t.key === item.type)?.group : null;
+            lastType = item.type;
+            const Icon = ICONS[item.type];
+            return (
+              <div key={`${item.type}-${item.id}`}>
+                {heading && (
+                  <div className="px-2 pb-1.5 pt-3 text-[11px] font-medium text-mute">
+                    {heading}
+                  </div>
+                )}
                 <button
-                  onMouseEnter={() => setActive(index)}
-                  onClick={() => select(entity)}
+                  type="button"
+                  data-index={position}
+                  onMouseEnter={() => setActive(position)}
+                  onClick={() => open(item)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors",
-                    index === active ? "bg-primary/10" : "hover:bg-muted",
+                    "flex w-full items-center gap-3 rounded-[3px] px-2.5 py-[9px] text-left",
+                    position === current ? "bg-[#FCE8EB]" : "hover:bg-subtle",
                   )}
                 >
-                  <span className="grid size-8 shrink-0 place-items-center rounded bg-muted text-primary"><Icon className="size-4" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold">{entity.name}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">{entity.detail}</span>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-[3px] border border-line bg-subtle text-club">
+                    <Icon className="size-4" />
                   </span>
-                  <span className="hidden text-[11px] text-muted-foreground sm:block">{entity.meta}</span>
-                  {index === active && <CornerDownLeft className="size-3.5 text-primary" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-ink">{item.name}</span>
+                    <span className="mt-0.5 block truncate text-xs text-mute">{item.detail}</span>
+                  </span>
+                  <span className="hidden shrink-0 text-xs text-mute sm:block">{item.meta}</span>
+                  {position === current && (
+                    <CornerDownLeft
+                      aria-hidden="true"
+                      className="ml-1 size-3.5 shrink-0 text-mute"
+                    />
+                  )}
                 </button>
               </div>
             );
           })}
         </div>
-        <footer className="flex flex-wrap items-center gap-3 border-t border-border px-4 py-2 text-[10px] text-muted-foreground"><span><kbd className="font-mono">↑ ↓</kbd> move</span><span><kbd className="font-mono">↵</kbd> open</span><span><kbd className="font-mono">Tab</kbd> type</span><span><kbd className="font-mono">Esc</kbd> close</span><span className="ml-auto">{shown.length} results</span></footer>
+        <div className="flex items-center gap-4 border-t border-line px-4 py-2.5 text-[11px] text-mute">
+          <Hint keys="↑ ↓" label="move" />
+          <Hint keys="↵" label="open" />
+          <Hint keys="Tab" label="switch type" />
+          <Hint keys="Esc" label="close" />
+          <span className="ml-auto">
+            {results.length} {results.length === 1 ? "result" : "results"}
+          </span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function Hint({ keys, label }: { keys: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1">
+      <kbd className="font-sans text-[11px] font-medium text-ink">{keys}</kbd>
+      {label}
+    </span>
   );
 }
