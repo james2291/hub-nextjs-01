@@ -359,6 +359,22 @@ export function getStandings(competitionSlug: string): Standings | undefined {
   return competition ? standingsByCompetition.get(competition.id) : undefined;
 }
 
+/**
+ * 1-based rank of a club on a standings measure. Ties are broken by league position, as in the
+ * design (Harlequins and Gloucester both scored 64 tries; Gloucester, 8th, ranks above).
+ */
+export function rankInStandings(
+  rows: StandingRow[],
+  clubSlug: string,
+  pick: (row: StandingRow) => number,
+  lowerIsBetter = false,
+): number {
+  const ordered = [...rows].sort(
+    (a, b) => (lowerIsBetter ? pick(a) - pick(b) : pick(b) - pick(a)) || a.position - b.position,
+  );
+  return ordered.findIndex((row) => row.club.slug === clubSlug) + 1;
+}
+
 export function standingOf(
   clubSlug: string,
   competitionSlug = "gallagher-prem",

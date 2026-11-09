@@ -1,6 +1,10 @@
-import { LegacyTabContent } from "@/components/oval/entity-tabs";
+import { TeamOverview } from "@/components/oval/team/overview";
 
 // Overview tab.
-export default function TeamOverview() {
-  return <LegacyTabContent tab="" />;
+export default async function TeamOverviewPage({
+  params,
+}: {
+  params: Promise<{ teamId: string }>;
+}) {
+  return <TeamOverview slug={(await params).teamId} />;
 }
