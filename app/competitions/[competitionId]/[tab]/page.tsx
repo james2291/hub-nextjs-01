@@ -12,6 +12,9 @@ import { CompetitionPeople } from "@/components/oval/competition/people";
 import { CompetitionStats } from "@/components/oval/competition/stats";
 import { CompetitionTable } from "@/components/oval/competition/table";
 import { EntityFixtureCard } from "@/components/oval/entity-fixture-card";
+import { MatchCentre } from "@/components/oval/match-centre/match-centre";
+import { hubNow } from "@/lib/now";
+import { getCompetition, getFixtures } from "@/server/feeds";
 import { competitionHeader } from "@/server/entities";
 
 type Params = Promise<{ competitionId: string; tab: string }>;
@@ -29,6 +32,15 @@ export default async function CompetitionTabPage({ params }: { params: Params })
   if (replacement !== undefined) redirect(entityHref("competition", competitionId, replacement));
   if (!isEntityTab("competition", tab)) notFound();
   if (tab === "fixtures") return <EntityFixtureCard kind="competition" id={competitionId} />;
+  if (tab === "match-centre") {
+    return (
+      <MatchCentre
+        competitionName={getCompetition(competitionId)?.name ?? "Competition"}
+        fixtures={getFixtures({ competition: competitionId })}
+        now={hubNow().toISOString()}
+      />
+    );
+  }
   if (tab === "table") return <CompetitionTable slug={competitionId} />;
   if (tab === "people") return <CompetitionPeople slug={competitionId} />;
   if (tab === "stats") return <CompetitionStats slug={competitionId} />;

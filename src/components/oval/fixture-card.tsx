@@ -3,7 +3,7 @@
 // Fixture Card (HANDOFF.md section 4), built once and used on Competition, Team, Player and
 // Referee pages. Rows are feed fixtures, newest first. Asset availability isn't in the feeds yet,
 // so every asset can be ticked; Download hands the selection to the exports API once it exists.
-import { ArrowRight, Download, RotateCcw, Search } from "lucide-react";
+import { ArrowRight, Download, FileDown, RotateCcw, Search } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -132,7 +132,7 @@ export function FixtureCard({
     router.replace(pathname, { scroll: false });
   };
 
-  const grid = `104px minmax(0,1.3fr) 76px minmax(0,1.3fr) 100px minmax(0,1.15fr) minmax(0,0.95fr) ${columns.map(() => "64px").join(" ")} 84px`;
+  const grid = `104px minmax(0,1.3fr) 76px minmax(0,1.3fr) 100px minmax(0,1.15fr) minmax(0,0.95fr) ${columns.map(() => "64px").join(" ")} 64px 84px`;
   const summary = perspective
     ? summaryFor(rows, perspective)
     : `${rows.length} ${rows.length === 1 ? "match" : "matches"}`;
@@ -287,6 +287,20 @@ export function FixtureCard({
                 {!fixture.scored && " · No score in feed"}
                 {outcome && ` · ${outcome === "W" ? "Won" : outcome === "L" ? "Lost" : "Drawn"}`}
               </div>
+              <div className="mt-2 flex justify-center gap-2">
+                <NextLink
+                  href={matchCentreHref(fixture)}
+                  className="inline-flex h-7 items-center gap-1 rounded-[3px] border border-line px-2.5 text-xs font-medium"
+                >
+                  Match centre <ArrowRight className="size-3" />
+                </NextLink>
+                <a
+                  href={liveXmlHref(fixture.id)}
+                  className="inline-flex h-7 items-center gap-1 rounded-[3px] border border-line px-2.5 text-xs font-medium"
+                >
+                  <FileDown className="size-3" /> Live XML
+                </a>
+              </div>
               {showAssets && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {columns.map((asset) => {
@@ -318,7 +332,7 @@ export function FixtureCard({
       </div>
 
       <div className="hidden overflow-x-auto rounded border border-line bg-panel md:block">
-        <div role="table" aria-label={title} className="min-w-[1100px]">
+        <div role="table" aria-label={title} className="min-w-[1170px]">
           <div
             role="row"
             className="grid items-center gap-2.5 border-b border-line bg-[#F9FAFB] px-4 py-2.5 text-[11px] font-medium text-mute"
@@ -357,6 +371,7 @@ export function FixtureCard({
                     {asset}
                   </button>
                 ))}
+                <span className="text-center">Live XML</span>
                 <span className="text-center">Match Centre</span>
               </>,
               "columnheader",
@@ -488,8 +503,18 @@ export function FixtureCard({
                         );
                       })}
                       <span className="flex justify-center">
+                        <a
+                          href={liveXmlHref(fixture.id)}
+                          aria-label={`Download Live XML: ${label}`}
+                          title="Download Live XML"
+                          className="grid size-7 place-items-center rounded-[3px] border border-line bg-panel text-ink hover:bg-subtle"
+                        >
+                          <FileDown className="size-3.5" />
+                        </a>
+                      </span>
+                      <span className="flex justify-center">
                         <NextLink
-                          href={`/matches/${fixture.id}`}
+                          href={matchCentreHref(fixture)}
                           aria-label={`Open match centre: ${label}`}
                           className="grid size-7 place-items-center rounded-[3px] border border-line bg-panel text-ink hover:bg-subtle"
                         >
@@ -514,6 +539,15 @@ export function FixtureCard({
       </div>
     </>
   );
+}
+
+/** The fixture in its competition's Match Centre. */
+function matchCentreHref(fixture: Fixture): string {
+  return `/competitions/${fixture.competition.slug}/match-centre?match=${fixture.id}`;
+}
+
+function liveXmlHref(matchId: number): string {
+  return `/api/v1/matches/${matchId}/live-xml?download=1`;
 }
 
 function summaryFor(rows: Fixture[], club: string): string {

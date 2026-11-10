@@ -13,6 +13,7 @@ export const entityNavigation: Record<EntityKind, EntityTab[]> = {
   competition: [
     { label: "Overview", slug: "" },
     { label: "Fixture Card", slug: "fixtures" },
+    { label: "Match Centre", slug: "match-centre" },
     { label: "Table", slug: "table" },
     { label: "Teams & players", slug: "people" },
     { label: "Stats", slug: "stats" },
@@ -61,7 +62,6 @@ const LEGACY_TABS: Record<EntityKind, Record<string, string>> = {
   competition: {
     "match-room": "",
     "fixture-card": "fixtures",
-    "match-centre": "fixtures",
     "video-centre": "fixtures",
     "live-xml": "feeds",
     players: "people",

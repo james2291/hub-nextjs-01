@@ -1,8 +1,8 @@
 "use client";
 
 // User Pinned on the client. The root layout reads the user's pins on the server; changes go
-// through the User Pinned API (POST/DELETE /api/v1/user/pins, PUT /api/v1/user/home) with an
-// optimistic update that rolls back if the request fails.
+// through the User Pinned API (POST/DELETE /api/v1/user/pins) with an optimistic update that
+// rolls back if the request fails. Home is always the matchday page; pins can't replace it.
 import {
   createContext,
   createElement,
@@ -19,10 +19,8 @@ export type PinnedPage = { path: string; label: string };
 
 type PinsValue = {
   pins: Pin[];
-  home: string | null;
   isPinned: (path: string) => boolean;
   togglePin: (page: PinnedPage) => Promise<void>;
-  setHome: (path: string | null) => Promise<void>;
 };
 
 const PinsContext = createContext<PinsValue | null>(null);
@@ -43,24 +41,20 @@ async function request(url: string, init: RequestInit): Promise<Response> {
 
 export function PinsProvider({
   initialPins,
-  initialHome,
   children,
 }: {
   initialPins: Pin[];
-  initialHome: string | null;
   children: ReactNode;
 }) {
   const [pins, setPins] = useState(initialPins);
-  const [home, setHomeState] = useState(initialHome);
 
   const togglePin = useCallback(
     async (page: PinnedPage) => {
       const existing = pins.find((pin) => pin.path === page.path);
-      const before = { pins, home };
+      const before = pins;
       try {
         if (existing) {
           setPins(pins.filter((pin) => pin.id !== existing.id));
-          if (home === existing.path) setHomeState(null);
           await request(`/api/v1/user/pins/${encodeURIComponent(existing.id)}`, {
             method: "DELETE",
           });
@@ -78,37 +72,20 @@ export function PinsProvider({
           setPins((current) => current.map((pin) => (pin.id === optimistic.id ? saved : pin)));
         }
       } catch (error) {
-        setPins(before.pins);
-        setHomeState(before.home);
+        setPins(before);
         toast(error instanceof Error ? error.message : "The change wasn't saved.");
       }
     },
-    [pins, home],
-  );
-
-  const setHome = useCallback(
-    async (path: string | null) => {
-      const before = home;
-      setHomeState(path);
-      try {
-        await request("/api/v1/user/home", { method: "PUT", body: JSON.stringify({ path }) });
-      } catch (error) {
-        setHomeState(before);
-        toast(error instanceof Error ? error.message : "The change wasn't saved.");
-      }
-    },
-    [home],
+    [pins],
   );
 
   const value = useMemo<PinsValue>(
     () => ({
       pins,
-      home,
       isPinned: (path) => pins.some((pin) => pin.path === path),
       togglePin,
-      setHome,
     }),
-    [pins, home, togglePin, setHome],
+    [pins, togglePin],
   );
   return createElement(PinsContext.Provider, { value }, children);
 }

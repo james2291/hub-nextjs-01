@@ -16,7 +16,7 @@ tags:
 - name: Session and search
   description: 'Hub endpoints: session and search.'
 - name: User Pinned
-  description: 'Hub endpoints: pages the user pins to the sidebar, and which pinned page opens as home.'
+  description: 'Hub endpoints: pages the user pins to the sidebar. Home is always the matchday page; a pin cannot replace it.'
 - name: Competitions
   description: 'Hub endpoints: competitions.'
 - name: Teams
@@ -38,7 +38,7 @@ tags:
 paths:
   /api/v1/user:
     get:
-      summary: The signed-in user, their club, role, home page and current season.
+      summary: The signed-in user, their club, role and current season.
       operationId: get_user
       tags:
       - Session and search
@@ -166,57 +166,6 @@ paths:
           description: OK
         '404':
           description: No such pin for this user
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '401':
-          description: No or expired session
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-  /api/v1/user/home:
-    put:
-      summary: Set or clear the page opened after sign-in.
-      operationId: put_user_home
-      tags:
-      - User Pinned
-      description: 'Used by: Pinned list "Set as home".
-
-
-        Access: Own data only (per user).'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                path:
-                  type:
-                  - string
-                  - 'null'
-              required:
-              - path
-              additionalProperties: false
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  homePath:
-                    type:
-                    - string
-                    - 'null'
-                required:
-                - homePath
-                additionalProperties: false
-        '422':
-          description: Path is not one of the user's pins
           content:
             application/json:
               schema:
@@ -3752,17 +3701,12 @@ components:
           anyOf:
           - $ref: '#/components/schemas/Ref'
           - type: 'null'
-        homePath:
-          type:
-          - string
-          - 'null'
         currentSeason:
           type: string
       required:
       - user
       - role
       - club
-      - homePath
       - currentSeason
       additionalProperties: false
     Pin:

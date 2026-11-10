@@ -53,3 +53,9 @@ export function reshaperFor(pattern: string): Reshaper<OperationId> | undefined 
 export function isMiss(value: unknown): value is ReshapeMiss {
   return typeof value === "object" && value !== null && "miss" in value;
 }
+
+/**
+ * Routes that meet their contract by returning the upstream file itself rather than JSON
+ * (app/api/v1/[...path]/route.ts). Live XML: application/xml with ETag and 304.
+ */
+export const fileContractRoutes = new Set(["matches/:matchId/live-xml"]);
