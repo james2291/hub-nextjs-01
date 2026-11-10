@@ -1,9 +1,10 @@
 "use client";
 
-// Fixture Card (HANDOFF.md section 4), built once and used on Competition, Team, Player and
+// Fixture Card (HANDOFF.md section 4, without the referee and venue columns and with round
+// numbers only, as asked after the handoff), built once and used on Competition, Team, Player and
 // Referee pages. Rows are feed fixtures, newest first. Asset availability isn't in the feeds yet,
 // so every asset can be ticked; Download hands the selection to the exports API once it exists.
-import { ArrowRight, Download, FileDown, RotateCcw, Search } from "lucide-react";
+import { ArrowRight, Download, RotateCcw, Search } from "lucide-react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -85,7 +86,7 @@ export function FixtureCard({
   const rounds = useMemo(() => {
     const seen: string[] = [];
     for (const fixture of [...fixtures].reverse())
-      if (!seen.includes(fixture.round)) seen.push(fixture.round);
+      if (!seen.includes(roundLabel(fixture))) seen.push(roundLabel(fixture));
     return seen;
   }, [fixtures]);
 
@@ -93,15 +94,12 @@ export function FixtureCard({
     const q = query.trim().toLowerCase();
     const filtered = fixtures.filter((fixture) => {
       if (competition !== ALL && fixture.competition.slug !== competition) return false;
-      if (round !== ALL && fixture.round !== round) return false;
+      if (round !== ALL && roundLabel(fixture) !== round) return false;
       if (result !== ALL && perspective && resultFor(fixture, perspective) !== result) return false;
       if (!q) return true;
-      return [
-        fixture.home.club.name,
-        fixture.away.club.name,
-        fixture.venue,
-        fixture.referee?.name ?? "",
-      ].some((text) => text.toLowerCase().includes(q));
+      return [fixture.home.club.name, fixture.away.club.name].some((text) =>
+        text.toLowerCase().includes(q),
+      );
     });
     return order === "oldest" ? [...filtered].reverse() : filtered;
   }, [fixtures, competition, round, result, perspective, query, order]);
@@ -132,7 +130,7 @@ export function FixtureCard({
     router.replace(pathname, { scroll: false });
   };
 
-  const grid = `104px minmax(0,1.3fr) 76px minmax(0,1.3fr) 100px minmax(0,1.15fr) minmax(0,0.95fr) ${columns.map(() => "64px").join(" ")} 64px 84px`;
+  const grid = `104px minmax(0,1.3fr) 76px minmax(0,1.3fr) 140px ${columns.map(() => "64px").join(" ")} 84px`;
   const summary = perspective
     ? summaryFor(rows, perspective)
     : `${rows.length} ${rows.length === 1 ? "match" : "matches"}`;
@@ -195,7 +193,7 @@ export function FixtureCard({
           <input
             type="search"
             aria-label="Search fixtures"
-            placeholder="Search team, venue or referee"
+            placeholder="Search team"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="min-h-0 min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-faint"
@@ -249,7 +247,9 @@ export function FixtureCard({
                   {ukDate(fixture.dateTime)} ·{" "}
                   <span className="font-mono">{ukTime(fixture.dateTime)}</span>
                 </span>
-                <span className="truncate pl-2">{fixture.round}</span>
+                <span className="truncate pl-2">
+                  {fixture.knockout ? fixture.round : `R${roundLabel(fixture)}`}
+                </span>
               </div>
               <NextLink
                 href={`/matches/${fixture.id}`}
@@ -281,9 +281,7 @@ export function FixtureCard({
                 </span>
               </NextLink>
               <div className="mt-1 truncate text-center text-[11px] text-mute">
-                {[fixture.competition.name, fixture.venue, fixture.referee?.name]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {[fixture.competition.name, poolOf(fixture)].filter(Boolean).join(" · ")}
                 {!fixture.scored && " · No score in feed"}
                 {outcome && ` · ${outcome === "W" ? "Won" : outcome === "L" ? "Lost" : "Drawn"}`}
               </div>
@@ -294,12 +292,6 @@ export function FixtureCard({
                 >
                   Match centre <ArrowRight className="size-3" />
                 </NextLink>
-                <a
-                  href={liveXmlHref(fixture.id)}
-                  className="inline-flex h-7 items-center gap-1 rounded-[3px] border border-line px-2.5 text-xs font-medium"
-                >
-                  <FileDown className="size-3" /> Live XML
-                </a>
               </div>
               {showAssets && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -332,7 +324,7 @@ export function FixtureCard({
       </div>
 
       <div className="hidden overflow-x-auto rounded border border-line bg-panel md:block">
-        <div role="table" aria-label={title} className="min-w-[1170px]">
+        <div role="table" aria-label={title} className="min-w-[860px]">
           <div
             role="row"
             className="grid items-center gap-2.5 border-b border-line bg-[#F9FAFB] px-4 py-2.5 text-[11px] font-medium text-mute"
@@ -358,8 +350,6 @@ export function FixtureCard({
                 <span className="text-center">Result</span>
                 <span>Away</span>
                 <span>Round</span>
-                <span>Venue</span>
-                <span>Referee</span>
                 {columns.map((asset) => (
                   <button
                     key={asset}
@@ -371,7 +361,6 @@ export function FixtureCard({
                     {asset}
                   </button>
                 ))}
-                <span className="text-center">Live XML</span>
                 <span className="text-center">Match Centre</span>
               </>,
               "columnheader",
@@ -462,32 +451,19 @@ export function FixtureCard({
                         {fixture.away.club.name}
                       </NextLink>
                       <span className="flex min-w-0 flex-col leading-[1.3]">
-                        <span className="truncate text-xs text-[#55554F]">{fixture.round}</span>
-                        <NextLink
-                          href={`/competitions/${fixture.competition.slug}`}
-                          className="truncate text-[11px] text-faint hover:underline"
-                        >
-                          {fixture.competition.name}
-                        </NextLink>
+                        <span className="truncate text-xs text-[#55554F]">
+                          {roundLabel(fixture)}
+                        </span>
+                        <span className="truncate text-[11px] text-faint">
+                          <NextLink
+                            href={`/competitions/${fixture.competition.slug}`}
+                            className="hover:underline"
+                          >
+                            {fixture.competition.name}
+                          </NextLink>
+                          {poolOf(fixture) && ` · ${poolOf(fixture)}`}
+                        </span>
                       </span>
-                      <span className="flex min-w-0 flex-col leading-[1.3]">
-                        <span className="truncate text-xs text-[#55554F]">{fixture.venue}</span>
-                        {fixture.attendance !== null && (
-                          <span className="text-[11px] text-faint">
-                            {fixture.attendance.toLocaleString("en-GB")} attendance
-                          </span>
-                        )}
-                      </span>
-                      {fixture.referee ? (
-                        <NextLink
-                          href={`/referees/${fixture.referee.slug}`}
-                          className="truncate text-xs text-[#55554F] hover:underline"
-                        >
-                          {fixture.referee.name}
-                        </NextLink>
-                      ) : (
-                        <span className="text-xs text-faint">Not in feed</span>
-                      )}
                       {columns.map((asset) => {
                         const id = key(fixture.id, asset);
                         return (
@@ -502,16 +478,6 @@ export function FixtureCard({
                           </span>
                         );
                       })}
-                      <span className="flex justify-center">
-                        <a
-                          href={liveXmlHref(fixture.id)}
-                          aria-label={`Download Live XML: ${label}`}
-                          title="Download Live XML"
-                          className="grid size-7 place-items-center rounded-[3px] border border-line bg-panel text-ink hover:bg-subtle"
-                        >
-                          <FileDown className="size-3.5" />
-                        </a>
-                      </span>
                       <span className="flex justify-center">
                         <NextLink
                           href={matchCentreHref(fixture)}
@@ -541,13 +507,21 @@ export function FixtureCard({
   );
 }
 
-/** The fixture in its competition's Match Centre. */
-function matchCentreHref(fixture: Fixture): string {
-  return `/competitions/${fixture.competition.slug}/match-centre?match=${fixture.id}`;
+/** Round column: just the number ("18"); knockouts keep their name ("Semi-final"). */
+function roundLabel(fixture: Fixture): string {
+  return fixture.roundNumber !== null && !fixture.knockout
+    ? String(fixture.roundNumber)
+    : fixture.round;
 }
 
-function liveXmlHref(matchId: number): string {
-  return `/api/v1/matches/${matchId}/live-xml?download=1`;
+/** The pool a pool-stage fixture is in ("Pool 3"), shown under the round. */
+function poolOf(fixture: Fixture): string | null {
+  return /^(Pool \d+)/.exec(fixture.round)?.[1] ?? null;
+}
+
+/** The fixture's Match Centre (a tab on its match page). */
+function matchCentreHref(fixture: Fixture): string {
+  return `/matches/${fixture.id}/match-centre`;
 }
 
 function summaryFor(rows: Fixture[], club: string): string {

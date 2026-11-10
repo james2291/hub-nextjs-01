@@ -1,4 +1,4 @@
-// Data the app shell needs on every page: the next opponent, the latest match, default pins and
+// Data the app shell needs on every page: the next opponent, default pins and
 // display names for breadcrumbs. Built on the server from the feeds and the hub clock.
 import { players } from "@/data/hub";
 import { hubNow } from "@/lib/now";
@@ -8,7 +8,6 @@ import {
   getCompetitions,
   getFixtures,
   getNextFixture,
-  getPastFixtures,
   getReferees,
 } from "@/server/feeds";
 import { opponentOf, type Fixture } from "@/lib/rugby";
@@ -23,9 +22,6 @@ export type ShellData = {
   nextOpponentSlug: string | null;
   /** The signed-in user's club slug. */
   clubSlug: string;
-  /** Sidebar "Matches": the user's club's latest match. */
-  latestMatch: ShellLink | null;
-  fixtureCardHref: string;
   /** User Pinned: the user's pins (read from the pins store by the root layout). */
   pins: Array<{ id: string; path: string; label: string; order: number }>;
   /** Path segment → display name, for breadcrumbs. */
@@ -52,7 +48,6 @@ export function getShellData(): Omit<ShellData, "pins"> {
   const club = CURRENT_USER.clubSlug;
   const next = getNextFixture(club, now);
   const opponent = next ? opponentOf(next, club) : null;
-  const latest = getPastFixtures(club, now)[0];
 
   const names: Record<string, string> = {
     teams: "Teams",
@@ -86,8 +81,6 @@ export function getShellData(): Omit<ShellData, "pins"> {
         : null,
     nextOpponentSlug: opponent?.slug ?? null,
     clubSlug: club,
-    latestMatch: latest ? { label: matchLabel(latest, club), href: `/matches/${latest.id}` } : null,
-    fixtureCardHref: `/teams/${club}/fixtures`,
     names,
     downloadsHref: "/competitions/gallagher-prem/feeds",
   };
