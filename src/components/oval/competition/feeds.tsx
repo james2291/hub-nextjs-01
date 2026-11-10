@@ -66,7 +66,7 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
     <PageBody>
       <div className="rounded bg-subtle px-4 py-3 text-[13px] text-[#55554F]">
         Feeds is shown to analysts only: Live XML and raw event files per match, plus exports. Every
-        fixture also has Live XML in its Match Centre and on the Fixture Card.
+        fixture also has Live XML in its Match Centre.
       </div>
       <Section
         minWidth={640}
