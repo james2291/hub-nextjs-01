@@ -541,9 +541,9 @@ export function FixtureCard({
   );
 }
 
-/** The fixture in its competition's Match Centre. */
+/** The fixture's Match Centre (a tab on its match page). */
 function matchCentreHref(fixture: Fixture): string {
-  return `/competitions/${fixture.competition.slug}/match-centre?match=${fixture.id}`;
+  return `/matches/${fixture.id}/match-centre`;
 }
 
 function liveXmlHref(matchId: number): string {

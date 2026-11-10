@@ -190,7 +190,7 @@ Not done: pages are still rendered per request (the shell reads the hub clock an
 
 ## Match Centre and Live XML (9 Nov 2026)
 
-- **Competition → Match Centre** (`/competitions/{id}/match-centre`): a fixture browser (completed/upcoming, team, round; `?match=` selects a fixture) and, for the selected fixture, Summary, Lineups, Kicking, Quarters, Player data and Live XML views. Score and match facts come from the fixtures feed; the views read the Hub's v2 routes (`/api/v1/matches/{id}/stats`, `/lineups`, `/player-stats`, `/live-xml`), the same RugbyViz widgets the v2 Match Centre used (catalogued in `src/server/upstream/catalog.ts`). Until those responses are reshaped, the views lay out the v2 payload generically and say so.
+- **Competition → Match Centre** (`/competitions/{id}/match-centre`, since moved to each match; see below): a fixture browser (completed/upcoming, team, round; `?match=` selects a fixture) and, for the selected fixture, Summary, Lineups, Kicking, Quarters, Player data and Live XML views. Score and match facts come from the fixtures feed; the views read the Hub's v2 routes (`/api/v1/matches/{id}/stats`, `/lineups`, `/player-stats`, `/live-xml`), the same RugbyViz widgets the v2 Match Centre used (catalogued in `src/server/upstream/catalog.ts`). Until those responses are reshaped, the views lay out the v2 payload generically and say so.
 - **Every fixture** has a Live XML download and a Match Centre link on the Fixture Card (all entity pages, desktop and phone), and in the Match Centre and Feeds.
 - **`GET /api/v1/matches/{matchId}/live-xml` meets its contract:** `application/xml`, `ETag`, `304` on `If-None-Match`, `Cache-Control: no-store`; add `?download=1` to save `{matchId}-live.xml`. Event XML/CSV (`download/{kind}`) are served as files the same way.
 - Without `OVAL_API_GATEWAY_URL` the views say the data service isn't connected. The wiring was tested end to end against a local mock of the gateway.
@@ -200,6 +200,13 @@ Not done: pages are still rendered per request (the shell reads the hub clock an
 
 - Users can no longer make a pinned page their home screen: Home is always the matchday page. Removed the sidebar's "Set as home" buttons, the redirect to a chosen page and the pinned page's name beside Home.
 - Removed `PUT /api/v1/user/home` (route and spec) and `homePath` from the `User` schema and the pins cookie. Cookies saved with a home page still load; the home page in them is ignored. Pins stay as sidebar shortcuts.
+
+## Match Centre per fixture (10 Nov 2026)
+
+- The Match Centre is now a tab on each match page (`/matches/{id}/match-centre`: Overview · Match Centre · Video · Stats) instead of a competition tab. It keeps the Summary, Lineups, Kicking, Quarters, Player data and Live XML views and the Live XML / Event XML / Event CSV downloads, for that fixture only.
+- The Fixture Card's Match Centre arrow opens the fixture's Match Centre; its Live XML download is unchanged.
+- Old links redirect: `/competitions/{id}/match-centre?match={matchId}` → `/matches/{matchId}/match-centre`, and without a match to the competition's Fixture Card. The prototype's `/matches/{id}/player-data` now goes to the Match Centre.
+- Since the loading skeletons (`loading.tsx`) were added, these redirects (and the other legacy-slug redirects) happen in the browser after the page streams, not as HTTP 307s. Moving them to `proxy.ts` would restore 307s if crawlers or link checkers need them.
 
 ## Next steps (from the build plan)
 

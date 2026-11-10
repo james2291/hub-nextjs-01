@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 export const MATCH_TABS = [
   { label: "Overview", slug: "" },
+  { label: "Match Centre", slug: "match-centre" },
   { label: "Video", slug: "video" },
   { label: "Stats", slug: "stats" },
 ];
