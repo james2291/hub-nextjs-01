@@ -227,20 +227,12 @@ function Sidebar({ data, pathname }: { data: ShellData; pathname: string }) {
           href={data.nextOpponent?.href ?? "/next-opponent"}
           className={item(pathname.startsWith("/opposition"))}
         >
-          Next opponent
-          <span className="ml-auto truncate pl-2 text-xs text-side-lab">
-            {data.nextOpponent?.label ?? "Season over"}
-          </span>
-        </NextLink>
-        <div className={label}>Library</div>
-        <NextLink
-          href={data.latestMatch?.href ?? data.fixtureCardHref}
-          className={item(pathname.startsWith("/matches"))}
-        >
-          Matches
-        </NextLink>
-        <NextLink href={data.fixtureCardHref} className={item(pathname === data.fixtureCardHref)}>
-          Fixture Card
+          <span className="shrink-0 whitespace-nowrap">Next opponent</span>
+          {data.nextOpponent && (
+            <span className="ml-auto min-w-0 truncate pl-2 text-xs text-side-lab">
+              {data.nextOpponent.label}
+            </span>
+          )}
         </NextLink>
         <div className={label}>Pinned</div>
         {pins.length === 0 && (

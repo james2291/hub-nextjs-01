@@ -213,6 +213,11 @@ Not done: pages are still rendered per request (the shell reads the hub clock an
 - Columns are now Date · KO, Home, Result, Away, Round, the asset ticks and Match Centre. Removed: Live XML (it's in each fixture's Match Centre and on Competition → Feeds), Referee, and Venue with attendance. The phone cards and search follow (search is by team).
 - Round shows just the number ("18"); pool games show the round number with the pool under it ("Champions Cup · Pool 3"); knockouts keep their name ("Semi-final"). The Round filter uses the same labels.
 
+## Sidebar tidy (10 Nov 2026)
+
+- Removed the Library section (Matches and Fixture Card). Fixture Cards are on each competition, team, player and referee page.
+- "Next opponent" no longer gets squashed: the label stays on one line and the opponent's name truncates beside it. With no next fixture (out of season) nothing is shown beside it; the "Season over" text is gone.
+
 ## Next steps (from the build plan)
 
 1. Reshape each `/api/v1/*` pass-through response to its `docs/openapi.yaml` schema (`GET /api/v1/routing` lists them).
