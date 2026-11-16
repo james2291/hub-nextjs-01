@@ -147,7 +147,7 @@ function Block({ block }: { block: BlockData }) {
     return (
       <section className="overflow-hidden rounded border border-line">
         {block.title && (
-          <h3 className="border-b border-line2 bg-[#F9FAFB] px-4 py-2 text-xs font-semibold">
+          <h3 className="border-b border-line2 bg-sunken px-4 py-2 text-xs font-semibold">
             {block.title}
           </h3>
         )}
@@ -172,7 +172,7 @@ function Block({ block }: { block: BlockData }) {
   return (
     <section className="overflow-hidden rounded border border-line">
       {block.title && (
-        <h3 className="border-b border-line2 bg-[#F9FAFB] px-4 py-2 text-xs font-semibold">
+        <h3 className="border-b border-line2 bg-sunken px-4 py-2 text-xs font-semibold">
           {block.title}
         </h3>
       )}

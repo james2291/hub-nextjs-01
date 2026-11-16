@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
-import {
-  entityHref,
-  entityTabLabel,
-  isEntityTab,
-  legacyTab,
-} from "@/components/oval/entity-navigation";
+import { entityTabLabel, isEntityTab } from "@/components/oval/entity-navigation";
 import { EntityFixtureCard } from "@/components/oval/entity-fixture-card";
 import { PlayerStats } from "@/components/oval/player/stats";
 import { playerHeader } from "@/server/entities";
@@ -22,8 +17,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function PlayerTabPage({ params }: { params: Params }) {
   const { playerId, tab } = await params;
-  const replacement = legacyTab("player", tab);
-  if (replacement !== undefined) redirect(entityHref("player", playerId, replacement));
+  // Legacy tab slugs are redirected in proxy.ts (src/lib/legacy-routes.ts).
   if (!isEntityTab("player", tab)) notFound();
   if (tab === "fixtures") return <EntityFixtureCard kind="player" id={playerId} />;
   return <PlayerStats slug={playerId} />;

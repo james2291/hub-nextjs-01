@@ -87,13 +87,22 @@
   --color-loss: var(--loss);
   --color-amber: var(--amber);
   --color-pitch2: var(--pitch2);
+  --color-ink2: var(--ink2);
+  --color-sunken: var(--sunken);
+  --color-compare: var(--compare);
+  --color-compare-soft: var(--compare-soft);
+  --color-disabled: var(--disabled);
+  --color-away: var(--away);
+  --color-club-soft: var(--club-soft);
+  --color-club-strong: var(--club-strong);
+  --color-club-on-dark: var(--club-on-dark);
   --font-display: var(--font-plex-sans), "IBM Plex Sans", sans-serif;
   --font-sans: var(--font-plex-sans), "IBM Plex Sans", sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", monospace;
 }
 
 :root {
-  /* Oval Hub redesign tokens (design/oval-hub-handoff/HANDOFF.md section 1). Hex in comments. */
+  /* Oval Hub redesign tokens (docs/design/HANDOFF.md section 1). Hex in comments. */
   --page: oklch(0.973 0.003 106.4); /* #F6F6F4 app background */
   --panel: oklch(1 0 0); /* #FFFFFF cards and panels */
   --line: oklch(0.911 0.007 106.5); /* #E2E2DD panel borders, grid gaps */
@@ -117,6 +126,16 @@
   --loss: oklch(0.5 0.182 29.5); /* #B42318 */
   --amber: oklch(0.543 0.123 61.8); /* #A15C07 */
   --pitch2: oklch(0.441 0.087 150); /* #2A6038 */
+  /* Formerly inline hex in components. */
+  --ink2: #55554f; /* strong secondary text; the away line in momentum */
+  --sunken: #f9fafb; /* table heads, code and file panels */
+  --compare: #a8a8a0; /* bars for the comparison / other side */
+  --compare-soft: #d4d4ce; /* lighter comparison fill, inactive markers */
+  --disabled: #b8b8b2; /* disabled primary button */
+  --away: #c99a06; /* away side in match stats and maps */
+  --club-soft: #fce8eb; /* selected row in search */
+  --club-strong: #9e0b23; /* text on club-soft */
+  --club-on-dark: #f28b9b; /* club accent on the dark video panel */
 
   --radius: 0.25rem;
   --background: var(--page);

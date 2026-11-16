@@ -1,4 +1,4 @@
-// "Check values" from design/oval-hub-handoff/HANDOFF.md section 5, plus the derived figures it
+// "Check values" from docs/design/HANDOFF.md section 5, plus the derived figures it
 // asks to be tested (club colour, record, points per match, ranks).
 import { describe, expect, it } from "vitest";
 

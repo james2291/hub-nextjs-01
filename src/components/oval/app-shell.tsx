@@ -121,7 +121,7 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
                 </nav>
                 <button
                   type="button"
-                  aria-label="Search (⌘K)"
+                  aria-keyshortcuts="Meta+K Control+K"
                   onClick={() => setSearchOpen(true)}
                   className="ml-auto hidden h-[30px] w-80 items-center gap-2 rounded-[3px] border border-line bg-page px-2.5 text-faint hover:border-faint lg:flex"
                 >
@@ -261,14 +261,14 @@ function PinButton({ pathname, label }: { pathname: string; label: string }) {
   return (
     <Button
       variant="outline"
+      // A toggle keeps one name; aria-pressed carries the state (WCAG 2.5.3 label in name).
       aria-pressed={pinned}
-      aria-label={pinned ? "Unpin this page" : "Pin this page"}
-      title={pinned ? "Unpin" : "Pin to sidebar"}
+      title={pinned ? "Unpin from sidebar" : "Pin to sidebar"}
       onClick={() => togglePin({ path: pathname, label })}
       className="px-2.5"
     >
       {pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-      <span className="hidden xl:inline">{pinned ? "Pinned" : "Pin"}</span>
+      <span className="sr-only xl:not-sr-only">Pin</span>
     </Button>
   );
 }

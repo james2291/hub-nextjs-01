@@ -37,7 +37,10 @@ function ovalProxy(): string {
 
 function rugbyvizDirect(): string {
   const value = process.env.RUGBYVIZ_API_URL;
-  if (!value) throw new UpstreamConfigError("RUGBYVIZ_API_URL is not set. V2 event search uses the direct RugbyViz base, not oval-proxy.");
+  if (!value)
+    throw new UpstreamConfigError(
+      "RUGBYVIZ_API_URL is not set. V2 event search uses the direct RugbyViz base, not oval-proxy.",
+    );
   return trimSlash(value);
 }
 
@@ -46,9 +49,13 @@ function xeatreAuth(): { base: string; user: string; password: string; key: stri
   const password = process.env.XEATRE_API_PASSWORD;
   const key = process.env.XEATRE_API_KEY;
   if (!user || !password || !key) {
-    throw new UpstreamConfigError("XEATRE_API_USER, XEATRE_API_PASSWORD, and XEATRE_API_KEY are not set.");
+    throw new UpstreamConfigError(
+      "XEATRE_API_USER, XEATRE_API_PASSWORD, and XEATRE_API_KEY are not set.",
+    );
   }
-  const base = trimSlash(process.env.XEATRE_API_URL || "https://ovalinsights.media.xeatre.cloud/api/v1");
+  const base = trimSlash(
+    process.env.XEATRE_API_URL || "https://ovalinsights.media.xeatre.cloud/api/v1",
+  );
   return { base, user, password, key };
 }
 
@@ -68,20 +75,75 @@ async function readBody(response: Response): Promise<unknown> {
   return response.text();
 }
 
-async function request(url: string, headers: HeadersInit): Promise<{ status: number; contentType: string | null; data: unknown }> {
+/**
+ * One JSON log line per upstream call: host, path (no query string, which can carry ids
+ * from Xeatre search URLs), status and duration. Never logs headers or bodies.
+ */
+function logCall(url: string, status: number, started: number): void {
+  let host = "invalid-url";
+  let path = url;
   try {
-    const response = await fetch(url, { headers, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
-    return { status: response.status, contentType: response.headers.get("content-type"), data: await readBody(response) };
+    const parsed = new URL(url);
+    host = parsed.host;
+    path = parsed.pathname;
+  } catch {
+    // keep the raw value
+  }
+  const line = {
+    level: status === 0 || status >= 500 ? "error" : status >= 400 ? "warn" : "info",
+    msg: "upstream",
+    host,
+    path,
+    status,
+    durationMs: Math.round(performance.now() - started),
+  };
+  if (process.env.NODE_ENV !== "test") console.log(JSON.stringify(line));
+}
+
+async function request(
+  url: string,
+  headers: HeadersInit,
+): Promise<{ status: number; contentType: string | null; data: unknown }> {
+  const started = performance.now();
+  try {
+    const response = await fetch(url, {
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const result = {
+      status: response.status,
+      contentType: response.headers.get("content-type"),
+      data: await readBody(response),
+    };
+    logCall(url, response.status, started);
+    return result;
   } catch (error) {
-    return { status: 0, contentType: null, data: error instanceof Error ? error.message : "Upstream request failed" };
+    logCall(url, 0, started);
+    return {
+      status: 0,
+      contentType: null,
+      data: error instanceof Error ? error.message : "Upstream request failed",
+    };
   }
 }
 
-async function callXeatre(item: UpstreamCall): Promise<{ urlPath: string; result: { status: number; contentType: string | null; data: unknown } }> {
+async function callXeatre(
+  item: UpstreamCall,
+): Promise<{
+  urlPath: string;
+  result: { status: number; contentType: string | null; data: unknown };
+}> {
   const auth = xeatreAuth();
   const basic = `Basic ${Buffer.from(`${auth.user}:${auth.password}`).toString("base64")}`;
-  const tokenResponse = await request(joinUrl(auth.base, "token/token.php"), { ApiKey: auth.key, Authorization: basic });
-  const tokenValue = typeof tokenResponse.data === "object" && tokenResponse.data && "token" in tokenResponse.data ? (tokenResponse.data as { token: unknown }).token : null;
+  const tokenResponse = await request(joinUrl(auth.base, "token/token.php"), {
+    ApiKey: auth.key,
+    Authorization: basic,
+  });
+  const tokenValue =
+    typeof tokenResponse.data === "object" && tokenResponse.data && "token" in tokenResponse.data
+      ? (tokenResponse.data as { token: unknown }).token
+      : null;
   const token = typeof tokenValue === "string" ? tokenValue : "";
   if (tokenResponse.status !== 200 || !token) {
     return { urlPath: "token/token.php", result: tokenResponse };
@@ -94,11 +156,18 @@ async function callXeatre(item: UpstreamCall): Promise<{ urlPath: string; result
   }
   return {
     urlPath: path,
-    result: await request(joinUrl(auth.base, path), { ApiKey: auth.key, Authorization: basic, Token: token }),
+    result: await request(joinUrl(auth.base, path), {
+      ApiKey: auth.key,
+      Authorization: basic,
+      Token: token,
+    }),
   };
 }
 
-export async function callUpstream(item: UpstreamCall, authorization: string | null): Promise<UpstreamCallResult> {
+export async function callUpstream(
+  item: UpstreamCall,
+  authorization: string | null,
+): Promise<UpstreamCallResult> {
   const token = idToken(authorization);
   if (item.channel === "xeatre") {
     const called = await callXeatre(item);
@@ -115,7 +184,8 @@ export async function callUpstream(item: UpstreamCall, authorization: string | n
     url = joinUrl(rugbyvizDirect(), item.path);
     const user = process.env.RUGBYVIZ_BASIC_USER;
     const password = process.env.RUGBYVIZ_BASIC_PASSWORD;
-    if (user && password) headers["Authorization"] = `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
+    if (user && password)
+      headers["Authorization"] = `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
   }
 
   const result = await request(url, headers);

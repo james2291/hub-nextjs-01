@@ -11,6 +11,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import type { components } from "@/api/openapi";
+import { serverEnv } from "@/server/env";
 import { defaultPinEntries } from "@/server/shell";
 
 export type Pin = components["schemas"]["Pin"];
@@ -21,12 +22,8 @@ export const MAX_PINS = 20;
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
 function secret(): string {
-  const value = process.env["HUB_COOKIE_SECRET"];
-  if (value) return value;
-  if (process.env.NODE_ENV === "production") {
-    console.warn("HUB_COOKIE_SECRET is not set; pins cookie uses the development key.");
-  }
-  return "oval-hub-development-key";
+  // serverEnv() throws in production when HUB_COOKIE_SECRET is missing or short.
+  return serverEnv().HUB_COOKIE_SECRET ?? "oval-hub-development-key";
 }
 
 function sign(payload: string): string {

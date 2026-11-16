@@ -261,7 +261,6 @@ function MatchGroup({
         <span className="text-mute">{rounds}</span>
         <button
           type="button"
-          aria-label="Show or hide matches"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
           className="ml-auto flex h-8 items-center gap-2 px-2 text-xs text-mute"
@@ -322,7 +321,7 @@ function MatchRow({ fixture, now, clubSlug }: { fixture: Fixture; now: string; c
       <span className="relative flex items-center justify-end gap-2.5">
         <Play
           aria-label="Video after the match"
-          className="size-2.5 fill-[#D4D4CE] text-[#D4D4CE]"
+          className="size-2.5 fill-compare-soft text-compare-soft"
         />
         <button
           type="button"

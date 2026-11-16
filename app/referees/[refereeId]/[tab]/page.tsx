@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
-import {
-  entityHref,
-  entityTabLabel,
-  isEntityTab,
-  legacyTab,
-} from "@/components/oval/entity-navigation";
+import { entityTabLabel, isEntityTab } from "@/components/oval/entity-navigation";
 import { EntityFixtureCard } from "@/components/oval/entity-fixture-card";
 import { RefereeStats } from "@/components/oval/referee/stats";
 import { refereeHeader } from "@/server/entities";
@@ -22,8 +17,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function RefereeTabPage({ params }: { params: Params }) {
   const { refereeId, tab } = await params;
-  const replacement = legacyTab("referee", tab);
-  if (replacement !== undefined) redirect(entityHref("referee", refereeId, replacement));
+  // Legacy tab slugs are redirected in proxy.ts (src/lib/legacy-routes.ts).
   if (!isEntityTab("referee", tab)) notFound();
   if (tab === "fixtures") return <EntityFixtureCard kind="referee" id={refereeId} />;
   return <RefereeStats slug={refereeId} />;
