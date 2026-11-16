@@ -1,9 +1,11 @@
 // DELETE /api/v1/user/pins/{pinId} — unpin a page.
-import { pinError, readPins, writePins } from "@/server/user-pins";
+import { pinError, pinsUnavailable, readPins, writePins } from "@/server/user-pins";
 
 export const dynamic = "force-dynamic";
 
 export async function DELETE(_request: Request, context: { params: Promise<{ pinId: string }> }) {
+  const unavailable = pinsUnavailable();
+  if (unavailable) return unavailable;
   const { pinId } = await context.params;
   const state = await readPins();
   if (!state.pins.some((item) => item.id === pinId))

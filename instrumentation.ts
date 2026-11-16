@@ -1,16 +1,13 @@
 // Runs once when a server instance starts (node_modules/next/dist/docs/01-app/03-api-reference/
-// 03-file-conventions/instrumentation.md).
+// 03-file-conventions/instrumentation.md). On Vercel this also runs inside the proxy.ts function,
+// so it must never throw or exit: a missing setting is logged, not fatal.
 import type { Instrumentation } from "next";
 
-/** Validate the environment before serving: a production server without its secrets exits. */
 export async function register() {
   if (process.env["NEXT_RUNTIME"] !== "nodejs") return;
-  const { serverEnv } = await import("@/server/env");
-  try {
-    serverEnv();
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(1);
+  const { configProblems } = await import("@/server/env");
+  for (const problem of configProblems()) {
+    console.warn(JSON.stringify({ level: "warn", msg: "config", problem }));
   }
 }
 

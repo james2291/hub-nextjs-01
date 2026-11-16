@@ -16,7 +16,6 @@ max 20), so the client and the spec do not change when storage does.
 ## Consequences
 
 - Pins follow the browser, not the person. Clearing cookies resets them to the five defaults.
-- Production refuses to start without `HUB_COOKIE_SECRET` (`src/server/env.ts`). Rotating the key
-  resets everyone's pins.
+- Without `HUB_COOKIE_SECRET` in production, pins are read-only (the defaults; changes answer 503) and `/api/health` reports it. Rotating the key resets everyone's pins.
 - When Cognito lands, replace `readPins`/`writePins` with a table keyed by the Cognito `sub`;
   nothing else changes. Optionally import a valid cookie on first sign-in.
