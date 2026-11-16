@@ -102,7 +102,7 @@
 }
 
 :root {
-  /* Oval Hub redesign tokens (design/oval-hub-handoff/HANDOFF.md section 1). Hex in comments. */
+  /* Oval Hub redesign tokens (docs/design/HANDOFF.md section 1). Hex in comments. */
   --page: oklch(0.973 0.003 106.4); /* #F6F6F4 app background */
   --panel: oklch(1 0 0); /* #FFFFFF cards and panels */
   --line: oklch(0.911 0.007 106.5); /* #E2E2DD panel borders, grid gaps */

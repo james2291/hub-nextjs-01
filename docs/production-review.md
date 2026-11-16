@@ -1,84 +1,100 @@
-# Production review (16 Nov 2026)
+# Production review
 
-A review of this codebase for a developer taking it to production. Ordered by what blocks a
-launch first. File paths are given so each item can be picked up on its own.
+What a developer needs to do to take this proof of concept to production, ordered by what
+blocks a launch first. First written 16 Nov 2026; updated the same day after the handover work.
+Each item names its files so it can be picked up on its own.
 
-## 1. Must fix before real users
+`grep -rn "TEMPORARY HOLD"` lists every stand-in in the code.
 
-1. **No sign-in.** There is no `proxy.ts`/auth layer; every page and `/api/v1/*` route is open.
-   `src/lib/user.ts` hard-codes the user and club. Add Cognito (planned), protect all routes, and
-   replace `CURRENT_USER` with the session.
-2. **Shared upstream token.** `app/api/v1/[...path]/route.ts` falls back to
-   `OVAL_UPSTREAM_AUTHORIZATION` when a request has no `Authorization` header, so anyone who can
-   reach the site reads v2 data with that one token. Remove the fallback once sign-in exists (keep
-   it for local development only).
-3. **Pins cookie secret.** `src/server/user-pins.ts` falls back to a built-in development key when
-   `HUB_COOKIE_SECRET` is unset, and only warns. Fail startup in production instead. Move pins to
-   a database keyed by user when sign-in lands.
-4. **Dependency advisories.** `npm audit --omit=dev` reports 2 (zod, high; fast-uri, moderate).
-   Upgrade and re-run the checks.
-5. **No rate limiting or security headers.** Add limits on `/api/v1/*` (the spec already asks for
-   1 request / 5 s on live XML) and headers (CSP, HSTS, `X-Content-Type-Options`, frame options)
-   in `next.config.ts`.
+## Done in the handover
+
+| Item                     | Where                                                                                         |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| CI on every pull request | `.github/workflows/ci.yml`: typecheck, lint, unit, contract, routing, build, Playwright       |
+| Node pinned              | `.nvmrc` (22), `package.json` `engines`                                                       |
+| Playwright suite         | `e2e/`: page smoke, link crawl, axe WCAG 2 A/AA, phone width, pins API, Live XML, headers     |
+| Env validation           | `src/server/env.ts`; production refuses to start without `HUB_COOKIE_SECRET` (32+ chars)      |
+| Shared upstream token    | `OVAL_UPSTREAM_AUTHORIZATION` ignored in production unless `ALLOW_SHARED_UPSTREAM_TOKEN=1`    |
+| Security headers         | `next.config.ts`: CSP, HSTS, nosniff, `X-Frame-Options`/`frame-ancestors`, Referrer-Policy    |
+| Legacy URLs as 307s      | `proxy.ts` + `src/lib/legacy-routes.ts` (unit tested); pages only know current slugs          |
+| Live XML rate limit      | `proxy.ts`: 1 request / 5 s per client and match, 429 with `Retry-After` (per instance)       |
+| Health endpoint          | `GET /api/health`: status, version, demo mode, which upstreams are configured                 |
+| Start-up check           | `instrumentation.ts`: server exits if env is invalid; request errors logged as JSON           |
+| Upstream logging         | `src/server/upstream/client.server.ts`: one JSON line per call (host, path, status, ms)       |
+| Typed API client         | `src/api/client.ts` (openapi-fetch over the generated types); the pins provider uses it       |
+| Dependencies             | 40 unused packages removed; zod 4.6, Vitest 5; `npm audit --omit=dev` reports 0               |
+| Unused code              | shadcn kit (bar `button`), `src/lib/link.tsx`, unused hooks and images removed                |
+| Colour tokens            | Inline hex moved to tokens in `src/styles.css`                                                |
+| Docs                     | Short README, `docs/CHANGELOG.md`, `docs/data-reality.md`, `docs/decisions/`                  |
+| Repo weight              | Design screens/prototype and `roadmap.md` removed (recovery note in `docs/design/HANDOFF.md`) |
+
+## 1. Must do before real users
+
+1. **Sign-in (Cognito).** Not built: it needs a user pool. Every page and `/api/v1/*` route is
+   open, and `src/lib/user.ts` hard-codes the user and club.
+   - `proxy.ts` has the hook (`requireSession`, enabled with `AUTH_MODE=cognito`): verify the id
+     token from the session cookie against the pool's JWKS (`jose` works in proxy), redirect pages
+     to the hosted UI, answer `/api/v1/*` with 401, and forward the token as `Authorization`.
+   - Check access in route handlers too; the proxy can be skipped by a matcher change
+     (`docs/decisions/0006-proxy-for-redirects-and-limits.md`).
+   - Replace `CURRENT_USER` with the session and build `GET /api/v1/user`.
+2. **Pins storage.** Not built: it needs a database. Replace `readPins`/`writePins` in
+   `src/server/user-pins.ts` with a table keyed by the Cognito `sub`
+   (`docs/decisions/0002-pins-in-a-signed-cookie.md`). Nothing else changes.
+3. **Shared rate limit.** The Live XML limit is in memory. Before running more than one instance,
+   move it to Redis/Upstash or API Gateway usage plans, and consider limits on the rest of
+   `/api/v1/*`.
+4. **Error reporting.** Errors still go to the console. Add Sentry (or similar) in
+   `instrumentation.ts` and the `error.tsx` boundaries; ship the JSON upstream logs to your log
+   store.
 
 ## 2. Data: the biggest piece of remaining work
 
-- Pages read bundled 2025/26 JSON (`src/server/feeds/2025-26/`) and demo data
-  (`src/data/hub.ts`, still imported by 17 files). Nothing updates when a match is played.
-- 32 of the 33 routed `/api/v1/*` endpoints still pass v2 payloads through unshaped
-  (`npm run check:contract`). Capture real payloads into `fixtures/upstream/`, write the reshapers
-  in `src/server/contract/reshape.ts`, then switch `src/server/feeds/index.ts` functions from the
-  JSON files to those endpoints. The page components don't need to change: they take plain props.
-- Hub ids are slugs (`harlequins`); v2 needs numeric ids. The feeds module maps them today; the
-  API layer needs the same mapping.
-- Illustrative figures (`src/lib/match-illustrative.ts`, `src/lib/seeded.ts`, momentum, try map)
-  must be deleted, not left behind a flag, once the event feed is connected.
-- The Match Centre renders v2 payloads generically (`match-centre/upstream-view.tsx`). Replace
+See `docs/data-reality.md` for what is real, demo and illustrative on each page.
+
+- **Reshapers.** 32 of the 33 routed `/api/v1/*` endpoints still pass v2 payloads through
+  unshaped (`npm run check:contract`). Not built here: they need real payloads, and field names
+  are not guessed. For each endpoint: capture a payload into `fixtures/upstream/<operationId>/`
+  (run with `OVAL_API_GATEWAY_URL` and a Cognito token), write the reshaper in
+  `src/server/contract/reshape.ts` (its return type is the spec's 200 body, so `tsc` catches wrong
+  fields), and `check:contract` validates it.
+- **Slug ↔ id map** (`docs/decisions/0001-slugs-and-ids.md`) is needed before reshaped endpoints
+  can take slugs.
+- **Switch the feeds.** Point each function in `src/server/feeds/index.ts` at its endpoint,
+  keeping the return shapes; the pages take plain props and don't change. Then delete
+  `src/data/hub.ts`, `src/lib/match-illustrative.ts` and `src/lib/seeded.ts` as their consumers go
+  live. Delete, don't hide behind `HUB_DEMO`.
+- **Match Centre** renders v2 payloads generically (`match-centre/upstream-view.tsx`). Replace
   with purpose-built panels as each reshaper lands.
+- **Video player.** When it's built, add the Xeatre media host to `media-src` in the CSP
+  (`next.config.ts`).
 
-## 3. Make it safe to change
-
-- **No CI.** There is no `.github/workflows`. Add one job: `npm ci`, `typecheck`, `lint`, `test`,
-  `check:contract`, `check:routing`, `build`.
-- **Thin tests.** 23 unit tests cover the feed derivations and the pins cookie only. The browser
-  checks used during the build (link crawl, axe accessibility audit, phone-width overflow) were
-  one-off scripts; turn them into a Playwright suite in the repo.
-- **Pin the toolchain.** Add `engines`/`.nvmrc` (Node 22 was used) and decide on a deploy target
-  (Dockerfile or host config); none is in the repo.
-- **Observability.** Errors go to `console.error` only. Add error reporting and request logging
-  for the upstream calls (status, duration, endpoint).
-
-## 4. Performance
+## 3. Performance
 
 - The root layout is `force-dynamic` (it reads the hub clock and the pins cookie), so every page
-  renders per request. Move the clock- and user-dependent parts of the shell behind `<Suspense>`
-  so Competition, Team and Referee pages can be cached.
-- Legacy-URL redirects run in page code and, since `loading.tsx` was added, resolve in the browser
-  rather than as HTTP 307s. Move them to `proxy.ts` or `next.config.ts` redirects.
+  renders per request. Move the clock- and user-dependent parts of the shell behind `<Suspense>`,
+  then cache Competition, Team and Referee pages (`revalidate` or `"use cache"`, keyed by the feed
+  update) once data is live.
+- Not-found pages answer 200 (they stream behind `loading.tsx`) with `noindex`. If a real 404 status
+  matters, check the id before the segment's loading boundary, e.g. in `proxy.ts` or the layout.
 
-## 5. Tidy-up (low risk, do early)
+## 4. Tidy-up still open
 
-- **Unused code.** 42 of the 46 shadcn components in `src/components/ui/` are unused, as are the
-  dependencies `@hookform/resolvers` and `date-fns` (and most Radix packages with them).
-  `src/lib/link.tsx` (the TanStack compatibility layer) can go once nothing imports it.
-- **Repo weight.** `design/oval-hub-handoff/` (7.3 MB of screens and prototype) and `roadmap.md`
-  are reference material; move them out of the app repo or to a docs repo.
-- **README.** It is a 227-line change log. Split into a short README (run, configure, deploy) and
-  `docs/CHANGELOG.md`.
-- **Large files.** `fixture-card.tsx` (559 lines) holds the desktop table, phone cards, filters
-  and URL state; split into those parts. `upstream/catalog.ts` (665 lines) would read better as
-  one file per resource.
-- **Styling.** About 30 hex colours are written inline in components (`#55554F`, `#A8A8A0`,
-  `#F9FAFB`…). Add them as tokens in `src/styles.css`.
-- **Tables.** Tables are div grids with ARIA roles. Real `<table>` elements would be simpler and
-  more robust for the simple ones.
-- **Naming.** "Team sheets", "Hub API", "v2" and "feeds" are used consistently in code comments;
-  keep the "TEMPORARY HOLD" comment convention for anything that is a stand-in, so
-  `grep -rn "TEMPORARY HOLD"` lists what must be replaced.
+- `fixture-card.tsx` (557 lines) holds the desktop table, phone cards, filters and URL state; split
+  into those parts when it next changes. `upstream/catalog.ts` would read better as one file per
+  resource.
+- Simple tables are div grids with ARIA roles; real `<table>` elements would be simpler.
+- `npm audit` reports 8 moderate advisories in dev-only tooling (minimatch via eslint); not in
+  the production bundle.
+- CSP uses `'unsafe-inline'` for scripts (Next's bootstrap). Move to nonces in `proxy.ts` if a
+  stricter policy is required
+  (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`).
+- Decide the deploy target (Vercel, or a Dockerfile for a Node 22 host) and add preview deploys
+  per pull request.
 
 ## Suggested order
 
-1. CI, toolchain pin, dependency upgrades, tidy-up (a day or two; makes everything after safer).
-2. Sign-in and the security items in section 1.
-3. Reshapers and live data, endpoint by endpoint, deleting demo/illustrative code as each lands.
-4. Playwright suite, observability, caching.
+1. Sign-in and pins storage (section 1), with error reporting.
+2. Slug ↔ id map, then reshapers and live data endpoint by endpoint, deleting demo and
+   illustrative code as each lands.
+3. Caching, shared rate limit, then scale out.

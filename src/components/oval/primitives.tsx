@@ -1,4 +1,4 @@
-// Shared building blocks for the Oval Hub redesign (design/oval-hub-handoff/HANDOFF.md sections 1
+// Shared building blocks for the Oval Hub redesign (docs/design/HANDOFF.md sections 1
 // and 8.2): data-note strip, crests, club colour bars, KPI strips, joined panels and table rows.
 // Server-safe: no hooks, so server and client components can both use them.
 import NextLink from "next/link";
