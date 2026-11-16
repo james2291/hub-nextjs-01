@@ -218,6 +218,12 @@ Not done: pages are still rendered per request (the shell reads the hub clock an
 - Removed the Library section (Matches and Fixture Card). Fixture Cards are on each competition, team, player and referee page.
 - "Next opponent" no longer gets squashed: the label stays on one line and the opponent's name truncates beside it. With no next fixture (out of season) nothing is shown beside it; the "Season over" text is gone.
 
+## Match page changes and production review (16 Nov 2026)
+
+- Match Overview: the lineup has a home/away toggle and is drawn front row at the top, back three at the bottom. Match momentum is a line chart (click a five-minute block for its reading).
+- Match Stats is laid out like Player Stats: a match profile with bars (home side against the away side's marker), a scoring summary with the event list, then the try & kick map full width. Illustrative figures are shared with the Overview (`src/lib/match-illustrative.ts`).
+- `docs/production-review.md`: what a developer needs to do to take this to production, in order.
+
 ## Next steps (from the build plan)
 
 1. Reshape each `/api/v1/*` pass-through response to its `docs/openapi.yaml` schema (`GET /api/v1/routing` lists them).
