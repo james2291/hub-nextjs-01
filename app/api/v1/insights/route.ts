@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { z } from "zod";
+
 import { InsightRequestSchema } from "@/lib/ai-insights";
 import { getInsight, insightsApiConfigured } from "@/server/insights/client.server";
 
@@ -16,7 +18,7 @@ export async function POST(request: Request) {
         error: {
           code: "validation_failed",
           message: "Invalid insight request",
-          details: parsed.error.flatten(),
+          details: z.flattenError(parsed.error),
         },
       },
       { status: 422 },
