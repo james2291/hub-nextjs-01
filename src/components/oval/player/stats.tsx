@@ -5,6 +5,7 @@ import NextLink from "next/link";
 
 import { PageBody } from "@/components/oval/app-shell";
 import { possessive, peerOf } from "@/components/oval/player/overview";
+import { ZoneMap } from "@/components/oval/player/zone-map";
 import { DataNote, PanelGrid, Section } from "@/components/oval/primitives";
 import { getPlayer } from "@/data/hub";
 import { opponentOf, recordFor, resultFor, sideOf, ukDayMonth } from "@/lib/rugby";
@@ -161,46 +162,10 @@ export function PlayerStats({ slug }: { slug: string }) {
         meta={<span className="font-mono text-[11px] font-medium text-club">ILLUSTRATIVE</span>}
       >
         <div className="p-4">
-          <div className="relative h-[210px] overflow-hidden rounded-[2px] bg-pitch">
-            {Array.from({ length: 10 }, (_, index) => (
-              <div
-                key={index}
-                className={cn("absolute inset-y-0 w-[5%]", index % 2 === 0 ? "bg-pitch2" : "")}
-                style={{ left: `${index * 10}%` }}
-              />
-            ))}
-            {[8, 26, 50, 74, 92].map((line) => (
-              <div
-                key={line}
-                className="absolute inset-y-0 w-px bg-white/40"
-                style={{ left: `${line}%` }}
-              />
-            ))}
-            {[
-              [35, 35, 34],
-              [45, 52, 40],
-              [55, 28, 46],
-              [62, 48, 60],
-              [70, 64, 42],
-              [80, 38, 36],
-            ].map(([x, y, size], index) => (
-              <span
-                key={index}
-                className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  width: size,
-                  height: size,
-                  background:
-                    "radial-gradient(circle, rgba(200,16,46,0.85), rgba(234,179,8,0.45) 55%, transparent 72%)",
-                }}
-              />
-            ))}
-            <span className="absolute right-3 top-2 text-[11px] text-white">Attacking →</span>
-          </div>
+          <ZoneMap slug={player.id} position={player.position} name={player.name} />
           <p className="mt-3 text-xs text-mute">
-            Layout only. Where {player.name} touches the ball needs x/y event data from the Hub API.
+            Illustrative, shaped by position. Where {player.name} touches the ball needs x/y event
+            data from the Hub API.
           </p>
         </div>
       </Section>

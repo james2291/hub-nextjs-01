@@ -4,6 +4,15 @@ Newest first. Earlier entries describe the state at the time; paths may have mov
 (`design/oval-hub-handoff/` is now `docs/design/HANDOFF.md`, the shadcn UI kit and
 `src/lib/link.tsx` were removed on 16 Nov 2026).
 
+## 16 Nov 2026: match Stats map removed, player heatmap as pitch zones
+
+- Match Stats no longer has the try & kick map (or its team / event / half filters). The match
+  profile and the scoring list stay.
+- Player Stats → Season heatmap is now a horizontal zone map: the field of play in ten 10 m
+  bands, own try line to opposition try line, each shaded by its share of the player's touches
+  with a bar and percentage (`src/components/oval/player/zone-map.tsx`). Illustrative, shaped by
+  position, until the Hub API sends x/y events.
+
 ## 16 Nov 2026: fix for 500 MIDDLEWARE_INVOCATION_FAILED
 
 The handover made the server exit at start-up when `HUB_COOKIE_SECRET` was missing. On Vercel
