@@ -1,7 +1,7 @@
 "use client";
 
 // User Pinned on the client. The root layout reads the user's pins on the server; changes go
-// through the User Pinned API (POST/DELETE /api/v1/user/pins) with an optimistic update that
+// through the User Pinned API (POST/DELETE /api/v1/user/pins, typed via src/api/client.ts) with an optimistic update that
 // rolls back if the request fails. Home is always the matchday page; pins can't replace it.
 import {
   createContext,
@@ -14,6 +14,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import { hubApi } from "@/api/client";
+
 export type Pin = { id: string; path: string; label: string; order: number };
 export type PinnedPage = { path: string; label: string };
 
@@ -25,18 +27,10 @@ type PinsValue = {
 
 const PinsContext = createContext<PinsValue | null>(null);
 
-async function request(url: string, init: RequestInit): Promise<Response> {
-  const response = await fetch(url, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
-  });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as {
-      error?: { message?: string };
-    } | null;
-    throw new Error(body?.error?.message ?? "The change wasn't saved.");
-  }
-  return response;
+/** The API's error message, or a generic one. */
+function failure(error: unknown): Error {
+  const message = (error as { error?: { message?: string } } | undefined)?.error?.message;
+  return new Error(message ?? "The change wasn't saved.");
 }
 
 export function PinsProvider({
@@ -55,9 +49,10 @@ export function PinsProvider({
       try {
         if (existing) {
           setPins(pins.filter((pin) => pin.id !== existing.id));
-          await request(`/api/v1/user/pins/${encodeURIComponent(existing.id)}`, {
-            method: "DELETE",
+          const { error } = await hubApi.DELETE("/api/v1/user/pins/{pinId}", {
+            params: { path: { pinId: existing.id } },
           });
+          if (error) throw failure(error);
         } else {
           const optimistic: Pin = {
             id: `pending-${page.path}`,
@@ -66,9 +61,8 @@ export function PinsProvider({
             order: pins.length,
           };
           setPins([...pins, optimistic]);
-          const saved = (await (
-            await request("/api/v1/user/pins", { method: "POST", body: JSON.stringify(page) })
-          ).json()) as Pin;
+          const { data: saved, error } = await hubApi.POST("/api/v1/user/pins", { body: page });
+          if (error || !saved) throw failure(error);
           setPins((current) => current.map((pin) => (pin.id === optimistic.id ? saved : pin)));
         }
       } catch (error) {
