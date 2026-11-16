@@ -1,5 +1,7 @@
-// Server environment, validated once with zod. Import `serverEnv()` instead of reading
-// process.env directly so a missing production secret fails at start-up, not on first use.
+// Server environment, parsed once with zod. Import `serverEnv()` instead of reading process.env.
+// It never throws: a bad or missing setting switches off the feature that needs it and is listed
+// by configProblems() (logged at start-up, reported by /api/health). Throwing here would also take
+// down proxy.ts on Vercel (500 MIDDLEWARE_INVOCATION_FAILED) and with it every page.
 // Every variable is documented in .env.example and typed in src/env.d.ts.
 import { z } from "zod";
 
@@ -9,12 +11,12 @@ const optional = z
   .transform((value) => (value ? value : undefined));
 
 const Schema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z.enum(["development", "production", "test"]).catch("development"),
   // Hub
   HUB_NOW: optional,
   HUB_COOKIE_SECRET: optional,
-  HUB_DEMO: z.enum(["0", "1"]).optional(),
-  AUTH_MODE: z.enum(["none", "cognito"]).default("none"),
+  HUB_DEMO: z.enum(["0", "1"]).optional().catch(undefined),
+  AUTH_MODE: z.enum(["none", "cognito"]).catch("none"),
   // Upstreams
   INSIGHTS_API_URL: optional,
   INSIGHTS_API_KEY: optional,
@@ -24,7 +26,7 @@ const Schema = z.object({
   RUGBYVIZ_BASIC_USER: optional,
   RUGBYVIZ_BASIC_PASSWORD: optional,
   OVAL_UPSTREAM_AUTHORIZATION: optional,
-  ALLOW_SHARED_UPSTREAM_TOKEN: z.enum(["0", "1"]).optional(),
+  ALLOW_SHARED_UPSTREAM_TOKEN: z.enum(["0", "1"]).optional().catch(undefined),
   XEATRE_API_URL: optional,
   XEATRE_API_USER: optional,
   XEATRE_API_PASSWORD: optional,
@@ -35,29 +37,29 @@ export type ServerEnv = z.infer<typeof Schema>;
 
 let cached: ServerEnv | undefined;
 
-/** Parsed server env. Throws in production when a required secret is missing. */
+/** Parsed server env. Unrecognised values fall back to their defaults. */
 export function serverEnv(): ServerEnv {
-  if (cached) return cached;
-  const parsed = Schema.safeParse(process.env);
-  if (!parsed.success) {
-    throw new Error(
-      `Invalid environment: ${JSON.stringify(z.flattenError(parsed.error).fieldErrors)}`,
+  cached ??= Schema.parse(process.env);
+  return cached;
+}
+
+/** The pins cookie key, or null in production when it is missing or too short (pins read-only). */
+export function cookieSecret(): string | null {
+  const env = serverEnv();
+  if (env.HUB_COOKIE_SECRET && env.HUB_COOKIE_SECRET.length >= 32) return env.HUB_COOKIE_SECRET;
+  if (env.NODE_ENV === "production") return null;
+  return env.HUB_COOKIE_SECRET ?? "oval-hub-development-key";
+}
+
+/** Settings a production deploy should fix. Names only, never values. */
+export function configProblems(): string[] {
+  const problems: string[] = [];
+  if (serverEnv().NODE_ENV === "production" && cookieSecret() === null) {
+    problems.push(
+      "HUB_COOKIE_SECRET is missing or shorter than 32 characters: pins can't be saved.",
     );
   }
-  const env = parsed.data;
-  // `next build` runs with NODE_ENV=production but has no runtime secrets; only enforce at runtime.
-  const building = process.env["NEXT_PHASE"] === "phase-production-build";
-  if (env.NODE_ENV === "production" && !building) {
-    const missing: string[] = [];
-    if (!env.HUB_COOKIE_SECRET || env.HUB_COOKIE_SECRET.length < 32) {
-      missing.push("HUB_COOKIE_SECRET (at least 32 characters)");
-    }
-    if (missing.length > 0) {
-      throw new Error(`Missing production environment: ${missing.join(", ")}`);
-    }
-  }
-  cached = env;
-  return env;
+  return problems;
 }
 
 /** Demo mode: the bundled 2025/26 feeds and seeded data are shown and labelled as such. */

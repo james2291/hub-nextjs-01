@@ -4,6 +4,13 @@ Newest first. Earlier entries describe the state at the time; paths may have mov
 (`design/oval-hub-handoff/` is now `docs/design/HANDOFF.md`, the shadcn UI kit and
 `src/lib/link.tsx` were removed on 16 Nov 2026).
 
+## 16 Nov 2026: fix for 500 MIDDLEWARE_INVOCATION_FAILED
+
+The handover made the server exit at start-up when `HUB_COOKIE_SECRET` was missing. On Vercel
+`instrumentation.ts` also runs inside the `proxy.ts` function, so every request failed. Missing
+settings are now never fatal: pins become read-only (pin changes answer 503), the problem is
+logged at start-up and `/api/health` reports `"degraded"`.
+
 ## 16 Nov 2026: production handover
 
 - **CI** (`.github/workflows/ci.yml`): typecheck, lint, unit tests, contract and routing checks,
@@ -11,13 +18,13 @@ Newest first. Earlier entries describe the state at the time; paths may have mov
 - **Playwright suite** (`e2e/`): every key page renders without console errors, internal link
   crawl, axe WCAG 2 A/AA on core pages, no sideways scroll at phone width, pins API, Live XML
   503/429, security headers, legacy 307s. Three accessible-name issues it found are fixed.
-- **Security:** env validated at start-up (`src/server/env.ts`); production refuses to start
+- **Security:** env parsed in one place (`src/server/env.ts`); pins are read-only in production
   without `HUB_COOKIE_SECRET`; the shared upstream token is development-only; CSP, HSTS and the
   other security headers; `X-Powered-By` off.
 - **`proxy.ts`:** legacy tab slugs are HTTP 307s again; Live XML is limited to one request per 5 s
   per client and match (per instance); a documented hook for Cognito (`AUTH_MODE`).
-- **`GET /api/health`**, one JSON log line per upstream call, and `instrumentation.ts`: the
-  server exits at start-up on invalid env and logs unhandled request errors as JSON.
+- **`GET /api/health`**, one JSON log line per upstream call, and `instrumentation.ts`: config
+  problems and unhandled request errors are logged as JSON.
 - **Typed API client** `src/api/client.ts` (openapi-fetch), used by the pins provider.
 - **Cleanup:** unused shadcn components, hooks, images and 40 packages removed; zod 4.6 and
   Vitest 5; inline colours moved to tokens; `TEMPORARY HOLD` on every stand-in; design assets and

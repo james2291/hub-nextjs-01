@@ -29,8 +29,8 @@ HUB_NOW=2026-05-16T14:30:00+01:00 npm run dev     # match the design screenshots
 ```
 
 With no settings every page works: upstream routes answer 503 and AI cards show labelled
-placeholder text. In production `HUB_COOKIE_SECRET` is required (the server refuses to start
-without it). All settings are documented in `.env.example` and validated by `src/server/env.ts`.
+placeholder text. In production set `HUB_COOKIE_SECRET` (32+ characters): without it pages
+still work but pins can't be saved, and `/api/health` reports `"degraded"`. All settings are documented in `.env.example` and validated by `src/server/env.ts`.
 
 ## Checks
 

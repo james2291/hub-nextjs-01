@@ -126,8 +126,7 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
     });
   }
 
-  const authorization =
-    request.headers.get("authorization") ?? sharedUpstreamToken() ?? null;
+  const authorization = request.headers.get("authorization") ?? sharedUpstreamToken() ?? null;
   let calls: UpstreamCallResult[];
   try {
     calls = await Promise.all(resolved.calls.map((item) => callUpstream(item, authorization)));

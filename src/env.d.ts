@@ -1,9 +1,9 @@
 declare namespace NodeJS {
   interface ProcessEnv {
-    // Read through serverEnv() in src/server/env.ts, which validates these at start-up.
+    // Read through serverEnv() in src/server/env.ts, which parses these once.
     /** Fixed "now" for the hub clock, e.g. 2026-05-16T14:30:00+01:00. Unset = real time. */
     HUB_NOW?: string;
-    /** Signs the User Pinned cookie. Required in production, at least 32 characters. */
+    /** Signs the User Pinned cookie. Set in production, at least 32 characters; without it pins are read-only. */
     HUB_COOKIE_SECRET?: string;
     /** "1" (default) = bundled 2025/26 demo data, labelled as such. "0" once live data is wired. */
     HUB_DEMO?: "0" | "1";

@@ -11,7 +11,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import type { components } from "@/api/openapi";
-import { serverEnv } from "@/server/env";
+import { cookieSecret } from "@/server/env";
 import { defaultPinEntries } from "@/server/shell";
 
 export type Pin = components["schemas"]["Pin"];
@@ -21,13 +21,16 @@ export const PIN_COOKIE = "oval-hub-pins";
 export const MAX_PINS = 20;
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-function secret(): string {
-  // serverEnv() throws in production when HUB_COOKIE_SECRET is missing or short.
-  return serverEnv().HUB_COOKIE_SECRET ?? "oval-hub-development-key";
+/** Thrown when pins can't be saved because HUB_COOKIE_SECRET isn't set in production. */
+export class PinsUnavailableError extends Error {
+  constructor() {
+    super("Pins can't be saved: the server has no HUB_COOKIE_SECRET.");
+    this.name = "PinsUnavailableError";
+  }
 }
 
-function sign(payload: string): string {
-  return createHmac("sha256", secret()).update(payload).digest("base64url");
+function sign(payload: string, key: string): string {
+  return createHmac("sha256", key).update(payload).digest("base64url");
 }
 
 export function pinId(path: string): string {
@@ -46,10 +49,11 @@ export function makePins(entries: Array<{ path: string; label: string }>): Pin[]
 
 /** Reads the cookie value; null when missing, tampered with or malformed. */
 export function decodePins(raw: string | undefined): PinState | null {
-  if (!raw) return null;
+  const key = cookieSecret();
+  if (!raw || !key) return null;
   const [payload, signature] = raw.split(".");
   if (!payload || !signature) return null;
-  const expected = Buffer.from(sign(payload));
+  const expected = Buffer.from(sign(payload, key));
   const given = Buffer.from(signature);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
@@ -63,8 +67,10 @@ export function decodePins(raw: string | undefined): PinState | null {
 }
 
 export function encodePins(state: PinState): string {
+  const key = cookieSecret();
+  if (!key) throw new PinsUnavailableError();
   const payload = Buffer.from(JSON.stringify(state)).toString("base64url");
-  return `${payload}.${sign(payload)}`;
+  return `${payload}.${sign(payload, key)}`;
 }
 
 export const pinCookieOptions = {
@@ -83,6 +89,13 @@ export function isHubPath(path: string): boolean {
 }
 
 // ---- Route handler helpers -------------------------------------------------------------------
+
+/** 503 for pin changes when the server can't sign the cookie; null when pins can be saved. */
+export function pinsUnavailable() {
+  return cookieSecret()
+    ? null
+    : pinError(503, "upstream_unavailable", new PinsUnavailableError().message);
+}
 
 /** The current user's pins; the handoff's defaults until they change anything. */
 export async function readPins(): Promise<PinState> {
@@ -103,7 +116,7 @@ export async function writePins(state: PinState): Promise<void> {
   );
 }
 
-type ErrorCode = "not_found" | "validation_failed" | "conflict";
+type ErrorCode = "not_found" | "validation_failed" | "conflict" | "upstream_unavailable";
 
 export function pinError(status: number, code: ErrorCode, message: string) {
   return NextResponse.json(

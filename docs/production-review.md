@@ -8,25 +8,25 @@ Each item names its files so it can be picked up on its own.
 
 ## Done in the handover
 
-| Item                     | Where                                                                                         |
-| ------------------------ | --------------------------------------------------------------------------------------------- |
-| CI on every pull request | `.github/workflows/ci.yml`: typecheck, lint, unit, contract, routing, build, Playwright       |
-| Node pinned              | `.nvmrc` (22), `package.json` `engines`                                                       |
-| Playwright suite         | `e2e/`: page smoke, link crawl, axe WCAG 2 A/AA, phone width, pins API, Live XML, headers     |
-| Env validation           | `src/server/env.ts`; production refuses to start without `HUB_COOKIE_SECRET` (32+ chars)      |
-| Shared upstream token    | `OVAL_UPSTREAM_AUTHORIZATION` ignored in production unless `ALLOW_SHARED_UPSTREAM_TOKEN=1`    |
-| Security headers         | `next.config.ts`: CSP, HSTS, nosniff, `X-Frame-Options`/`frame-ancestors`, Referrer-Policy    |
-| Legacy URLs as 307s      | `proxy.ts` + `src/lib/legacy-routes.ts` (unit tested); pages only know current slugs          |
-| Live XML rate limit      | `proxy.ts`: 1 request / 5 s per client and match, 429 with `Retry-After` (per instance)       |
-| Health endpoint          | `GET /api/health`: status, version, demo mode, which upstreams are configured                 |
-| Start-up check           | `instrumentation.ts`: server exits if env is invalid; request errors logged as JSON           |
-| Upstream logging         | `src/server/upstream/client.server.ts`: one JSON line per call (host, path, status, ms)       |
-| Typed API client         | `src/api/client.ts` (openapi-fetch over the generated types); the pins provider uses it       |
-| Dependencies             | 40 unused packages removed; zod 4.6, Vitest 5; `npm audit --omit=dev` reports 0               |
-| Unused code              | shadcn kit (bar `button`), `src/lib/link.tsx`, unused hooks and images removed                |
-| Colour tokens            | Inline hex moved to tokens in `src/styles.css`                                                |
-| Docs                     | Short README, `docs/CHANGELOG.md`, `docs/data-reality.md`, `docs/decisions/`                  |
-| Repo weight              | Design screens/prototype and `roadmap.md` removed (recovery note in `docs/design/HANDOFF.md`) |
+| Item                     | Where                                                                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| CI on every pull request | `.github/workflows/ci.yml`: typecheck, lint, unit, contract, routing, build, Playwright                                     |
+| Node pinned              | `.nvmrc` (22), `package.json` `engines`                                                                                     |
+| Playwright suite         | `e2e/`: page smoke, link crawl, axe WCAG 2 A/AA, phone width, pins API, Live XML, headers                                   |
+| Env validation           | `src/server/env.ts`; never throws. Missing `HUB_COOKIE_SECRET` makes pins read-only (503) and `/api/health` "degraded"      |
+| Shared upstream token    | `OVAL_UPSTREAM_AUTHORIZATION` ignored in production unless `ALLOW_SHARED_UPSTREAM_TOKEN=1`                                  |
+| Security headers         | `next.config.ts`: CSP, HSTS, nosniff, `X-Frame-Options`/`frame-ancestors`, Referrer-Policy                                  |
+| Legacy URLs as 307s      | `proxy.ts` + `src/lib/legacy-routes.ts` (unit tested); pages only know current slugs                                        |
+| Live XML rate limit      | `proxy.ts`: 1 request / 5 s per client and match, 429 with `Retry-After` (per instance)                                     |
+| Health endpoint          | `GET /api/health`: status, version, demo mode, which upstreams are configured                                               |
+| Start-up check           | `instrumentation.ts`: config problems and request errors logged as JSON (never exits: on Vercel it also runs in `proxy.ts`) |
+| Upstream logging         | `src/server/upstream/client.server.ts`: one JSON line per call (host, path, status, ms)                                     |
+| Typed API client         | `src/api/client.ts` (openapi-fetch over the generated types); the pins provider uses it                                     |
+| Dependencies             | 40 unused packages removed; zod 4.6, Vitest 5; `npm audit --omit=dev` reports 0                                             |
+| Unused code              | shadcn kit (bar `button`), `src/lib/link.tsx`, unused hooks and images removed                                              |
+| Colour tokens            | Inline hex moved to tokens in `src/styles.css`                                                                              |
+| Docs                     | Short README, `docs/CHANGELOG.md`, `docs/data-reality.md`, `docs/decisions/`                                                |
+| Repo weight              | Design screens/prototype and `roadmap.md` removed (recovery note in `docs/design/HANDOFF.md`)                               |
 
 ## 1. Must do before real users
 

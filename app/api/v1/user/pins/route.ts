@@ -8,6 +8,7 @@ import {
   pinError,
   pinId,
   pinJson,
+  pinsUnavailable,
   readPins,
   writePins,
 } from "@/server/user-pins";
@@ -22,6 +23,8 @@ export async function GET() {
 const Body = z.object({ path: z.string().regex(/^\//), label: z.string().min(1).max(80) }).strict();
 
 export async function POST(request: Request) {
+  const unavailable = pinsUnavailable();
+  if (unavailable) return unavailable;
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success || !isHubPath(parsed.data.path)) {
     return pinError(
