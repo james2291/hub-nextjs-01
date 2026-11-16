@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { isMiss, reshaperFor } from "@/server/contract/reshape";
+import { sharedUpstreamToken } from "@/server/env";
 import { listHubRoutes, resolveHubRoute } from "@/server/upstream/catalog";
 import {
   UpstreamConfigError,
@@ -126,7 +127,7 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
   }
 
   const authorization =
-    request.headers.get("authorization") ?? process.env.OVAL_UPSTREAM_AUTHORIZATION ?? null;
+    request.headers.get("authorization") ?? sharedUpstreamToken() ?? null;
   let calls: UpstreamCallResult[];
   try {
     calls = await Promise.all(resolved.calls.map((item) => callUpstream(item, authorization)));

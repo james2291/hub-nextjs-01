@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import {
-  entityHref,
-  entityTabLabel,
-  isEntityTab,
-  legacyTab,
-} from "@/components/oval/entity-navigation";
+import { entityHref, entityTabLabel, isEntityTab } from "@/components/oval/entity-navigation";
 import { CompetitionFeeds } from "@/components/oval/competition/feeds";
 import { CompetitionPeople } from "@/components/oval/competition/people";
 import { CompetitionStats } from "@/components/oval/competition/stats";
@@ -42,8 +37,7 @@ export default async function CompetitionTabPage({
         : entityHref("competition", competitionId, "fixtures"),
     );
   }
-  const replacement = legacyTab("competition", tab);
-  if (replacement !== undefined) redirect(entityHref("competition", competitionId, replacement));
+  // Legacy tab slugs are redirected in proxy.ts (src/lib/legacy-routes.ts).
   if (!isEntityTab("competition", tab)) notFound();
   if (tab === "fixtures") return <EntityFixtureCard kind="competition" id={competitionId} />;
   if (tab === "table") return <CompetitionTable slug={competitionId} />;
