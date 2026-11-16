@@ -155,7 +155,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
             type="button"
             aria-label="Close search"
             onClick={onClose}
-            className="grid size-9 place-items-center rounded-[3px] text-[#55554F] hover:bg-subtle"
+            className="grid size-9 place-items-center rounded-[3px] text-ink2 hover:bg-subtle"
           >
             <X className="size-4" />
           </button>
@@ -179,11 +179,11 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
                 }}
                 className={cn(
                   "flex h-[30px] items-center gap-1.5 rounded-[3px] px-2.5 text-[11px] font-medium",
-                  selected ? "bg-[#FCE8EB] text-[#9E0B23]" : "text-[#55554F] hover:bg-subtle",
+                  selected ? "bg-club-soft text-club-strong" : "text-ink2 hover:bg-subtle",
                 )}
               >
                 {item.label}
-                <span className={cn("text-[10px]", selected ? "text-[#9E0B23]" : "text-faint")}>
+                <span className={cn("text-[10px]", selected ? "text-club-strong" : "text-faint")}>
                   {counts[item.key] ?? 0}
                 </span>
               </button>
@@ -222,7 +222,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
                   onClick={() => open(item)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-[3px] px-2.5 py-[9px] text-left",
-                    position === current ? "bg-[#FCE8EB]" : "hover:bg-subtle",
+                    position === current ? "bg-club-soft" : "hover:bg-subtle",
                   )}
                 >
                   <span className="grid size-9 shrink-0 place-items-center rounded-[3px] border border-line bg-subtle text-club">

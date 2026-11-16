@@ -1,3 +1,4 @@
+// TEMPORARY HOLD: delete with the event feed. See docs/data-reality.md.
 // ILLUSTRATIVE match figures, seeded per match and tilted toward the side that scored more, so
 // the Overview and Stats tabs agree with each other and never contradict the real score. Replaced
 // by GET /api/v1/matches/{matchId}/stats once the event feed is mapped.

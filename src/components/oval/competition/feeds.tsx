@@ -64,7 +64,7 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
 
   return (
     <PageBody>
-      <div className="rounded bg-subtle px-4 py-3 text-[13px] text-[#55554F]">
+      <div className="rounded bg-subtle px-4 py-3 text-[13px] text-ink2">
         Feeds is shown to analysts only: Live XML and raw event files per match, plus exports. Every
         fixture also has Live XML in its Match Centre.
       </div>
@@ -86,7 +86,7 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
               <NextLink href={`/matches/${fixture.id}`} className="truncate hover:underline">
                 {fixture.home.club.name} v {fixture.away.club.name}
               </NextLink>
-              <span className="text-[#55554F]">
+              <span className="text-ink2">
                 {fixture.round} · {ukDayMonth(fixture.dateTime)}{" "}
                 {new Date(fixture.dateTime).getUTCFullYear()}
               </span>
@@ -126,7 +126,7 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
             >
               <span className="truncate">{item.file}</span>
               <span className="font-mono text-[11px] text-mute">{item.type}</span>
-              <span className="text-[#55554F]">{item.size}</span>
+              <span className="text-ink2">{item.size}</span>
               <span
                 className={cn(
                   "text-[11px]",
@@ -139,7 +139,7 @@ export function CompetitionFeeds({ slug }: { slug: string }) {
               >
                 {item.status}
               </span>
-              <span className="text-[#55554F]">{item.started}</span>
+              <span className="text-ink2">{item.started}</span>
             </div>
           ))}
         </div>

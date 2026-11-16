@@ -73,7 +73,7 @@ export function MatchVideo({ fixture, season }: { fixture: Fixture; season: stri
           <div className="relative grid aspect-video place-items-center rounded-[2px] bg-ink">
             <span className="absolute left-3.5 top-2.5 text-[11px] text-white/70">
               Main cam{" "}
-              <span className="text-[#F28B9B]">
+              <span className="text-club-on-dark">
                 {moment?.minute}:08 · {moment?.label}
               </span>
             </span>

@@ -93,11 +93,11 @@ export function RankingBars({
                 {row.name}
               </NextLink>
               <span
-                className="relative block h-3 bg-[#EDEDE9]"
+                className="relative block h-3 bg-line2"
                 title={`${row.name}: ${format(row.value)} ${measure.label.toLowerCase()} (${averageLabel} ${measure.signed ? signed(Math.round(average * 10) / 10) : (Math.round(average * 10) / 10).toFixed(1)})`}
               >
                 <span
-                  className={cn("absolute inset-y-0", mine ? "bg-club" : "bg-[#A8A8A0]")}
+                  className={cn("absolute inset-y-0", mine ? "bg-club" : "bg-compare")}
                   style={{ left: `${Math.min(zero, end)}%`, width: `${Math.abs(end - zero)}%` }}
                 />
                 <span
@@ -116,7 +116,7 @@ export function RankingBars({
             {shell.user.clubName}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-3.5 bg-[#A8A8A0]" />
+            <span className="h-2 w-3.5 bg-compare" />
             Other clubs
           </span>
           <span className="flex items-center gap-1.5">

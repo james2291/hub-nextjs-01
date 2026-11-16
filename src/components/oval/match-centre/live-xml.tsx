@@ -93,7 +93,7 @@ export function LiveXmlPanel({ matchId }: { matchId: number }) {
       {query.data && (
         <pre
           aria-label="Live XML preview"
-          className="max-h-[420px] overflow-auto rounded border border-line bg-[#F9FAFB] p-3 font-mono text-[11px] leading-relaxed text-ink"
+          className="max-h-[420px] overflow-auto rounded border border-line bg-sunken p-3 font-mono text-[11px] leading-relaxed text-ink"
         >
           {lines.slice(0, 400).join("\n")}
           {lines.length > 400 ? `\n… ${lines.length - 400} more lines in the download` : ""}

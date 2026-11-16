@@ -79,7 +79,7 @@ export function MatchLineup({
               >
                 <span
                   className="grid size-[26px] place-items-center rounded-full bg-white text-xs font-semibold"
-                  style={{ color: club.colour === "#FFFFFF" ? "#18181B" : club.colour }}
+                  style={{ color: club.colour === "#FFFFFF" ? "var(--ink)" : club.colour }}
                 >
                   {slot.number}
                 </span>

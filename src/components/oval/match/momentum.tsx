@@ -1,5 +1,6 @@
 "use client";
 
+// TEMPORARY HOLD: seeded values until the event feed exists.
 // Match momentum (ILLUSTRATIVE): a line through five-minute readings. Above the centre line the
 // home side is on top, below it the away side. Territory or possession. Values are seeded per
 // match until the event feed exists. Click or focus a five-minute block for its reading.
@@ -120,7 +121,12 @@ export function Momentum({
               />
             ))}
             <path d={area} fill="var(--club)" fillOpacity="0.14" clipPath={`url(#${clip}-top)`} />
-            <path d={area} fill="#77776F" fillOpacity="0.16" clipPath={`url(#${clip}-bottom)`} />
+            <path
+              d={area}
+              fill="var(--ink2)"
+              fillOpacity="0.16"
+              clipPath={`url(#${clip}-bottom)`}
+            />
             <line
               x1="0"
               x2={W}
@@ -152,7 +158,7 @@ export function Momentum({
             <path
               d={line}
               fill="none"
-              stroke="#55554F"
+              stroke="var(--ink2)"
               strokeWidth="2"
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
@@ -179,7 +185,7 @@ export function Momentum({
                 <span
                   className={cn(
                     "absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-panel",
-                    reading >= 0 ? "bg-club" : "bg-[#55554F]",
+                    reading >= 0 ? "bg-club" : "bg-ink2",
                     selected === index ? "size-3" : "size-1.5 border-0",
                   )}
                   style={{ top: `${H / 2 - reading}%` }}

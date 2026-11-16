@@ -61,7 +61,7 @@ export function PlayerStats({ slug }: { slug: string }) {
           <div className="px-4 pt-3 text-xs font-medium">Hub ratings (0–100)</div>
           {player.contribution.map((item) => {
             const other = peer?.contribution.find((entry) => entry.label === item.label)?.value;
-            const tone = item.value >= 75 ? "bg-win" : item.value < 25 ? "bg-loss" : "bg-[#A8A8A0]";
+            const tone = item.value >= 75 ? "bg-win" : item.value < 25 ? "bg-loss" : "bg-compare";
             return (
               <div
                 key={item.label}
@@ -97,7 +97,7 @@ export function PlayerStats({ slug }: { slug: string }) {
               75 and over
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-3.5 bg-[#A8A8A0]" />
+              <span className="h-2 w-3.5 bg-compare" />
               25 to 74
             </span>
             <span className="flex items-center gap-1.5">

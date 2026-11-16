@@ -1,5 +1,7 @@
 "use client";
 
+// TEMPORARY HOLD: seeded / illustrative figures until GET /api/v1/matches/{matchId}/stats is mapped.
+
 // Match Stats, laid out like the Player Stats page: a profile of measures with bars (home side
 // against the away side's marker), a scoring summary with the event list, then the try & kick map
 // with team / event / half filters full width. ILLUSTRATIVE: locations are seeded per match until the Hub API sends x/y coordinates.
@@ -117,7 +119,7 @@ export function MatchStats({ fixture, played }: { fixture: Fixture; played: bool
   const [selected, setSelected] = useState<number | null>(null);
   const active =
     all.find((event) => event.id === selected) ?? shown.find((event) => event.kind === "Try");
-  const colour = (side: Side) => (side === "home" ? "var(--club)" : "#C99A06");
+  const colour = (side: Side) => (side === "home" ? "var(--club)" : "var(--away)");
   const count = (side: Side, k: Kind) =>
     all.filter((event) => event.side === side && event.kind === k).length;
   const club = (side: Side) => fixture[side].club;
@@ -172,7 +174,7 @@ export function MatchStats({ fixture, played }: { fixture: Fixture; played: bool
                   title={`${stat.label}: ${club("home").shortName} ${stat.home}${stat.suffix ?? ""}, ${club("away").shortName} ${stat.away}${stat.suffix ?? ""}`}
                 >
                   <span
-                    className={cn("absolute inset-y-0 left-0", ahead ? "bg-win" : "bg-[#A8A8A0]")}
+                    className={cn("absolute inset-y-0 left-0", ahead ? "bg-win" : "bg-compare")}
                     style={{ width: `${(stat.home / max) * 100}%` }}
                   />
                   <span
@@ -193,7 +195,7 @@ export function MatchStats({ fixture, played }: { fixture: Fixture; played: bool
               {club("home").shortName} ahead
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-3.5 bg-[#A8A8A0]" />
+              <span className="h-2 w-3.5 bg-compare" />
               {club("home").shortName} behind
             </span>
             <span className="flex items-center gap-1.5">
@@ -212,7 +214,7 @@ export function MatchStats({ fixture, played }: { fixture: Fixture; played: bool
                 <div className="font-medium">
                   <span className="text-club">{count("home", k)}</span>{" "}
                   <span className="text-xs text-mute">v</span>{" "}
-                  <span className="text-[#C99A06]">{count("away", k)}</span>
+                  <span className="text-away">{count("away", k)}</span>
                 </div>
               </div>
             ))}
@@ -374,7 +376,7 @@ export function MatchStats({ fixture, played }: { fixture: Fixture; played: bool
             <span>— Line break, start to finish</span>
             <span className="ml-auto">
               <span className="text-club">{club("home").shortName}</span> ·{" "}
-              <span className="text-[#C99A06]">{club("away").shortName}</span>
+              <span className="text-away">{club("away").shortName}</span>
             </span>
           </div>
         </div>

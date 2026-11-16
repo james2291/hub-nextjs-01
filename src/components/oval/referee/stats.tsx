@@ -17,7 +17,7 @@ function Legend({ a, b }: { a: string; b: string }) {
         {a}
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="size-2.5 rounded-[2px] bg-[#D4D4CE]" />
+        <span className="size-2.5 rounded-[2px] bg-compare-soft" />
         {b}
       </span>
     </span>
@@ -31,7 +31,7 @@ function PairedBar({ a, b }: { a: number; b: number }) {
         <span className="block h-full bg-ink" style={{ width: `${Math.min(100, a)}%` }} />
       </span>
       <span className="block h-2 bg-subtle">
-        <span className="block h-full bg-[#D4D4CE]" style={{ width: `${Math.min(100, b)}%` }} />
+        <span className="block h-full bg-compare-soft" style={{ width: `${Math.min(100, b)}%` }} />
       </span>
     </span>
   );

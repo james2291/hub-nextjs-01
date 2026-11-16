@@ -1,3 +1,4 @@
+// TEMPORARY HOLD: only illustrative panels use this; delete once they read real data.
 // Deterministic pseudo-random numbers for ILLUSTRATIVE layouts: the same match always draws the
 // same picture, and nothing here is presented as data.
 export function seeded(seed: number): () => number {

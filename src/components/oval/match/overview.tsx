@@ -116,7 +116,7 @@ export function MatchOverview({ fixture, played }: { fixture: Fixture; played: b
                       style={{ width: `${(stat.home / total) * 100}%` }}
                     />
                     <span
-                      className="h-[3px] bg-[#A8A8A0]"
+                      className="h-[3px] bg-compare"
                       style={{ width: `${(stat.away / total) * 100}%` }}
                     />
                   </div>

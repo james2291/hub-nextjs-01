@@ -86,7 +86,7 @@ export function getShellData(): Omit<ShellData, "pins"> {
   };
 }
 
-/** The handoff's five default pins, until the user changes their pins. */
+/** TEMPORARY HOLD: the handoff's five default pins (Harlequins demo), until per-user storage exists. */
 export function defaultPinEntries(): Array<{ path: string; label: string }> {
   const club = CURRENT_USER.clubSlug;
   const lastLeagueGame = getFixtures({ club, competition: "gallagher-prem" }).find(

@@ -1,3 +1,5 @@
+// TEMPORARY HOLD: bundled 2025/26 snapshot (HUB_DEMO=1). Swap each function for a Hub API call;
+// keep the return shapes. See docs/data-reality.md and docs/decisions/0001-slugs-and-ids.md.
 // Feed-backed model for the 2025/26 season, built from the RugbyViz fixtures/results and standings
 // feeds in ./2025-26. Server-side only: pages call these functions and pass plain props to client
 // components. When the Hub API (docs/openapi.yaml) is built, these functions become API calls and
